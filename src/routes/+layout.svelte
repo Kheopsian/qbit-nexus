@@ -15,10 +15,20 @@
 	</nav>
 </header>
 
-<main class="container">
+<main id="main-container" class="container">
 	<slot />
 </main>
 
 <style global>
 	/* Les styles de base sont maintenant dans app.css */
+
+	/* Style pour le container avec padding réduit (2 unités) */
+	#main-container.dashboard-padding {
+		padding: calc(var(--spacing-unit) * 2) !important;
+	}
+
+	/* Style par défaut pour le container (padding de 4 unités) */
+	#main-container.container {
+		padding: calc(var(--spacing-unit) * 4);
+	}
 </style>

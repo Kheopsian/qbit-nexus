@@ -1,8 +1,17 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types';
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
 	export let form: ActionData;
+
+	// S'assurer que la page settings utilise le padding standard
+	onMount(() => {
+		const container = document.querySelector('main.container');
+		if (container) {
+			container.classList.remove('dashboard-padding');
+		}
+	});
 </script>
 
 <section class="hero">
@@ -52,6 +61,12 @@
 		font-weight: 700;
 		line-height: 1;
 		margin-bottom: var(--spacing-unit);
+	}
+
+	.container {
+		max-width: 1400px;
+		margin: 0 auto;
+		padding: calc(var(--spacing-unit) * 4);
 	}
 
 	.dot {

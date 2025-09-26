@@ -134,7 +134,7 @@
 		cursor: pointer;
 		border: 1px solid var(--primary-text-color);
 		background-color: var(--primary-text-color);
-		color: #fff;
+		color: var(--card-background-color);
 		transition: all 0.3s ease;
 	}
 
@@ -207,5 +207,28 @@
 		.hero h1 {
 			font-size: 3rem;
 		}
+	}
+
+	/* Dark mode styles */
+	body.dark-mode .instance-row,
+	body.dark-mode .status-settings,
+	body.dark-mode .dropdown {
+		background-color: var(--card-background-color);
+		border-color: var(--border-color);
+	}
+
+	body.dark-mode .instance-name,
+	body.dark-mode .instance-url {
+		color: var(--primary-text-color);
+	}
+
+	body.dark-mode .delete-btn {
+		color: var(--secondary-text-color);
+		border-color: var(--secondary-text-color);
+	}
+
+	body.dark-mode .delete-btn:hover {
+		color: #dc3545;
+		border-color: #dc3545;
 	}
 </style>

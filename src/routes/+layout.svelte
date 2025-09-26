@@ -1,5 +1,40 @@
 <script>
 	import '../app.css';
+	import { onMount } from 'svelte';
+
+	let isDarkMode = false;
+
+	function toggleTheme() {
+		isDarkMode = !isDarkMode;
+		updateTheme();
+	}
+
+	function updateTheme() {
+		const body = document.body;
+		const icon = document.querySelector('#theme-switcher i');
+
+		if (isDarkMode) {
+			body.classList.add('dark-mode');
+			if (icon) icon.className = 'fas fa-sun';
+			localStorage.setItem('theme', 'dark');
+		} else {
+			body.classList.remove('dark-mode');
+			if (icon) icon.className = 'fas fa-moon';
+			localStorage.setItem('theme', 'light');
+		}
+	}
+
+	onMount(() => {
+		// Vérifier la préférence stockée ou utiliser la préférence système
+		const savedTheme = localStorage.getItem('theme');
+		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+		if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+			isDarkMode = true;
+		}
+
+		updateTheme();
+	});
 </script>
 
 <header class="header">
@@ -9,7 +44,7 @@
 	<nav class="nav">
 		<a href="/" class="nav-item">DASHBOARD</a>
 		<a href="/settings" class="nav-item">SETTINGS</a>
-		<div id="theme-switcher" class="nav-item">
+		<div id="theme-switcher" class="nav-item" on:click={toggleTheme}>
 			<i class="fas fa-moon"></i>
 		</div>
 	</nav>

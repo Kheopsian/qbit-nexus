@@ -1230,7 +1230,7 @@
 	.global-stats-summary {
 		display: flex;
 		gap: 1rem;
-		background-color: #fff;
+		background-color: var(--card-background-color);
 		border: 1px solid var(--border-color);
 		border-radius: 5px;
 		padding: 0.75rem;
@@ -1304,7 +1304,7 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		padding: 0.75rem;
-		background-color: #fff;
+		background-color: var(--card-background-color);
 		border: 1px solid var(--border-color);
 		border-radius: 5px;
 		margin-bottom: 1.5rem;
@@ -1384,7 +1384,7 @@
 		position: absolute;
 		top: 100%;
 		left: 0;
-		background: #fff;
+		background: var(--card-background-color);
 		border: 1px solid var(--border-color);
 		border-radius: 4px;
 		padding: 0.5rem;
@@ -1453,7 +1453,7 @@
 		padding: 0.5rem;
 		border: 1px solid var(--border-color);
 		border-radius: 4px;
-		background: #fff;
+		background: var(--card-background-color);
 		cursor: pointer;
 		font-size: 0.9rem;
 	}
@@ -1471,7 +1471,7 @@
 		top: 100%;
 		left: 0;
 		right: 0;
-		background: #fff;
+		background: var(--card-background-color);
 		border: 1px solid var(--border-color);
 		border-radius: 4px;
 		z-index: 10;
@@ -1492,7 +1492,7 @@
 		position: relative;
 	}
 	.table-container {
-		background-color: #fff;
+		background-color: var(--card-background-color);
 		border: 1px solid var(--border-color);
 		border-radius: 5px;
 		padding: 0;
@@ -1554,7 +1554,7 @@
 		background-color: var(--background-color);
 	}
 	tbody tr.selected {
-		background-color: hsl(210, 100%, 95%);
+		background-color: rgba(0, 123, 255, 0.1);
 	}
 
 	/* --- Poignées de redimensionnement --- */
@@ -1632,7 +1632,7 @@
 
 	/* --- Panneau d'informations --- */
 	.info-panel {
-		background-color: #fff;
+		background-color: var(--card-background-color);
 		border-top: 2px solid var(--border-color);
 		height: 250px;
 		display: flex;
@@ -1678,5 +1678,64 @@
 	.tab.active {
 		border-bottom-color: var(--accent-color);
 		font-weight: 700;
+	}
+
+	/* Dark mode styles */
+	:global(body.dark-mode .info-bar .instance-summary),
+	:global(body.dark-mode .info-bar .global-stats-summary),
+	:global(body.dark-mode .toolbar),
+	:global(body.dark-mode .status-settings),
+	:global(body.dark-mode .dropdown),
+	:global(body.dark-mode .table-container),
+	:global(body.dark-mode .info-panel) {
+		background-color: var(--card-background-color);
+		border-color: var(--border-color);
+	}
+
+	:global(body.dark-mode .custom-select button),
+	:global(body.dark-mode .status-btn),
+	:global(body.dark-mode .settings-btn),
+	:global(body.dark-mode .action-btn) {
+		background-color: var(--card-background-color);
+		border-color: var(--border-color);
+		color: var(--primary-text-color);
+	}
+
+	:global(body.dark-mode .custom-select button:hover),
+	:global(body.dark-mode .status-btn:hover),
+	:global(body.dark-mode .settings-btn:hover),
+	:global(body.dark-mode .action-btn:not(:disabled):hover) {
+		background-color: var(--background-color);
+	}
+
+	:global(body.dark-mode .option:hover),
+	:global(body.dark-mode tbody tr:hover) {
+		background-color: var(--background-color);
+	}
+
+	:global(body.dark-mode tbody tr.selected) {
+		background-color: rgba(0, 153, 255, 0.1);
+	}
+
+	:global(body.dark-mode .resize-handle:hover) {
+		background-color: var(--accent-color);
+	}
+
+	:global(body.dark-mode .status-settings label) {
+		color: var(--primary-text-color);
+	}
+
+	:global(body.dark-mode .status-indicator) {
+		color: var(--primary-text-color);
+	}
+
+	:global(body.dark-mode .status-btn .label),
+	:global(body.dark-mode .status-btn .count) {
+		color: var(--primary-text-color);
+	}
+
+	:global(body.dark-mode .filter-row label),
+	:global(body.dark-mode .custom-select label) {
+		color: var(--secondary-text-color);
 	}
 </style>

@@ -10,7 +10,7 @@
 	<p class="subtitle">Manage qBittorrent Instances</p>
 </section>
 
-<div class="metrics-grid">
+<section class="metrics-grid">
 	<div class="metric-card">
 		<div class="metric-label">Add New Instance</div>
 		<form method="POST">
@@ -38,17 +38,20 @@
 			{/if}
 		</div>
 	</div>
-</div>
+</section>
 
 <style>
 	.hero {
 		margin-bottom: calc(var(--spacing-unit) * 4);
+		padding-bottom: calc(var(--spacing-unit) * 2);
+		border-bottom: 1px solid var(--border-color);
 	}
 
 	h1 {
 		font-size: 5rem;
 		font-weight: 700;
 		line-height: 1;
+		margin-bottom: var(--spacing-unit);
 	}
 
 	.dot {
@@ -63,16 +66,20 @@
 
 	.metrics-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 		gap: calc(var(--spacing-unit) * 2);
 	}
 
 	.metric-card {
-		background-color: #fff;
+		background-color: var(--card-background-color);
 		border: 1px solid var(--border-color);
 		padding: calc(var(--spacing-unit) * 2);
 		border-radius: 5px;
+		display: flex;
+		flex-direction: column;
+		min-height: 200px;
 	}
+
 	.large-card {
 		grid-column: span 2;
 	}
@@ -82,13 +89,15 @@
 		color: var(--secondary-text-color);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		margin-bottom: 1.5rem;
+		margin-bottom: var(--spacing-unit);
 	}
 
 	form {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		flex-grow: 1;
+		justify-content: center;
 	}
 
 	input {
@@ -97,6 +106,9 @@
 		border: 1px solid var(--border-color);
 		border-radius: 4px;
 		font-size: 1rem;
+		font-family: var(--font-family-main);
+		background-color: var(--background-color);
+		color: var(--primary-text-color);
 	}
 
 	button {
@@ -108,12 +120,20 @@
 		border: 1px solid var(--primary-text-color);
 		background-color: var(--primary-text-color);
 		color: #fff;
+		transition: all 0.3s ease;
+	}
+
+	button:hover {
+		background-color: var(--accent-color);
+		border-color: var(--accent-color);
 	}
 
 	.instance-list {
 		display: flex;
 		flex-direction: column;
+		flex-grow: 1;
 	}
+
 	.instance-row {
 		display: grid;
 		grid-template-columns: 1fr 2fr auto;
@@ -121,6 +141,7 @@
 		padding: 0.75rem;
 		border-bottom: 1px solid var(--border-color);
 	}
+
 	.instance-row:last-child {
 		border-bottom: none;
 	}
@@ -128,6 +149,7 @@
 	.instance-name {
 		font-weight: 700;
 	}
+
 	.instance-url {
 		font-family: var(--font-family-mono);
 		color: var(--secondary-text-color);
@@ -138,13 +160,37 @@
 		color: var(--secondary-text-color);
 		border: none;
 		padding: 0.5rem;
+		cursor: pointer;
+		transition: color 0.3s ease;
 	}
+
 	.delete-btn:hover {
 		color: #dc3545;
 	}
+
 	.empty-state {
 		text-align: center;
 		color: var(--secondary-text-color);
 		padding: 1rem;
+		flex-grow: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	@media (max-width: 900px) {
+		.large-card {
+			grid-column: span 1;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.metrics-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.hero h1 {
+			font-size: 3rem;
+		}
 	}
 </style>

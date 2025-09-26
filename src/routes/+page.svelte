@@ -122,15 +122,6 @@
 		{ name: 'Serveur-US', status: 'online', dl: '32.3 MB/s', ul: '25.7 MB/s' }
 	];
 
-	// Appliquer le padding réduit pour le dashboard
-	import { onMount } from 'svelte';
-	onMount(() => {
-		const container = document.querySelector('#main-container') as HTMLElement;
-		if (container) {
-			container.style.padding = 'calc(var(--spacing-unit) * 2)';
-		}
-	});
-
 	const globalStats = {
 		downloadSpeed: '112.5 MB/s',
 		uploadSpeed: '45.8 MB/s',
@@ -1681,61 +1672,61 @@
 	}
 
 	/* Dark mode styles */
-	:global(body.dark-mode .info-bar .instance-summary),
-	:global(body.dark-mode .info-bar .global-stats-summary),
-	:global(body.dark-mode .toolbar),
-	:global(body.dark-mode .status-settings),
-	:global(body.dark-mode .dropdown),
-	:global(body.dark-mode .table-container),
-	:global(body.dark-mode .info-panel) {
+	:global(html.dark-mode .info-bar .instance-summary),
+	:global(html.dark-mode .info-bar .global-stats-summary),
+	:global(html.dark-mode .toolbar),
+	:global(html.dark-mode .status-settings),
+	:global(html.dark-mode .dropdown),
+	:global(html.dark-mode .table-container),
+	:global(html.dark-mode .info-panel) {
 		background-color: var(--card-background-color);
 		border-color: var(--border-color);
 	}
 
-	:global(body.dark-mode .custom-select button),
-	:global(body.dark-mode .status-btn),
-	:global(body.dark-mode .settings-btn),
-	:global(body.dark-mode .action-btn) {
+	:global(html.dark-mode .custom-select button),
+	:global(html.dark-mode .status-btn),
+	:global(html.dark-mode .settings-btn),
+	:global(html.dark-mode .action-btn) {
 		background-color: var(--card-background-color);
 		border-color: var(--border-color);
 		color: var(--primary-text-color);
 	}
 
-	:global(body.dark-mode .custom-select button:hover),
-	:global(body.dark-mode .status-btn:hover),
-	:global(body.dark-mode .settings-btn:hover),
-	:global(body.dark-mode .action-btn:not(:disabled):hover) {
+	:global(html.dark-mode .custom-select button:hover),
+	:global(html.dark-mode .status-btn:hover),
+	:global(html.dark-mode .settings-btn:hover),
+	:global(html.dark-mode .action-btn:not(:disabled):hover) {
 		background-color: var(--background-color);
 	}
 
-	:global(body.dark-mode .option:hover),
-	:global(body.dark-mode tbody tr:hover) {
+	:global(html.dark-mode .option:hover),
+	:global(html.dark-mode tbody tr:hover) {
 		background-color: var(--background-color);
 	}
 
-	:global(body.dark-mode tbody tr.selected) {
+	:global(html.dark-mode tbody tr.selected) {
 		background-color: rgba(0, 153, 255, 0.1);
 	}
 
-	:global(body.dark-mode .resize-handle:hover) {
+	:global(html.dark-mode .resize-handle:hover) {
 		background-color: var(--accent-color);
 	}
 
-	:global(body.dark-mode .status-settings label) {
+	:global(html.dark-mode .status-settings label) {
 		color: var(--primary-text-color);
 	}
 
-	:global(body.dark-mode .status-indicator) {
+	:global(html.dark-mode .status-indicator) {
 		color: var(--primary-text-color);
 	}
 
-	:global(body.dark-mode .status-btn .label),
-	:global(body.dark-mode .status-btn .count) {
+	:global(html.dark-mode .status-btn .label),
+	:global(html.dark-mode .status-btn .count) {
 		color: var(--primary-text-color);
 	}
 
-	:global(body.dark-mode .filter-row label),
-	:global(body.dark-mode .custom-select label) {
+	:global(html.dark-mode .filter-row label),
+	:global(html.dark-mode .custom-select label) {
 		color: var(--secondary-text-color);
 	}
 </style>

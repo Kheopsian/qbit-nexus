@@ -190,7 +190,7 @@ body {
 }
 
 /* Dark mode styles */
-body.dark-mode {
+html.dark-mode body {
 	--primary-text-color: #e0e0e0;
 	--secondary-text-color: #999;
 	--background-color: #121212;
@@ -199,20 +199,20 @@ body.dark-mode {
 	--card-background-color: #1e1e1e;
 }
 
-body.dark-mode .pool-status.online {
+html.dark-mode .pool-status.online {
 	color: #66bb6a;
 	background-color: rgba(102, 187, 106, 0.1);
 }
 
-body.dark-mode #docker-card .fab.fa-docker {
+html.dark-mode #docker-card .fab.fa-docker {
 	color: #2496ed;
 }
 
-body.dark-mode a {
+html.dark-mode a {
 	color: var(--accent-color);
 }
 
-body.dark-mode .nav-item:hover {
+html.dark-mode .nav-item:hover {
 	color: #ffffff;
 }
 

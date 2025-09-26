@@ -10,15 +10,15 @@
 	}
 
 	function updateTheme() {
-		const body = document.body;
+		const html = document.documentElement;
 		const icon = document.querySelector('#theme-switcher i');
 
 		if (isDarkMode) {
-			body.classList.add('dark-mode');
+			html.classList.add('dark-mode');
 			if (icon) icon.className = 'fas fa-sun';
 			localStorage.setItem('theme', 'dark');
 		} else {
-			body.classList.remove('dark-mode');
+			html.classList.remove('dark-mode');
 			if (icon) icon.className = 'fas fa-moon';
 			localStorage.setItem('theme', 'light');
 		}
@@ -57,13 +57,8 @@
 <style global>
 	/* Les styles de base sont maintenant dans app.css */
 
-	/* Style pour le container avec padding réduit (2 unités) */
-	#main-container.dashboard-padding {
-		padding: calc(var(--spacing-unit) * 2) !important;
-	}
-
-	/* Style par défaut pour le container (padding de 4 unités) */
+	/* Style par défaut pour le container (padding de 2 unités) */
 	#main-container.container {
-		padding: calc(var(--spacing-unit) * 4);
+		padding: calc(var(--spacing-unit) * 2);
 	}
 </style>

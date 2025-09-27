@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import { qbitData, wsConnectionStatus } from '$lib/websocket-client';
 	import { disconnectWebSocket } from '$lib/websocket-client';
+	import { mapTorrentStatus } from '$lib/torrent-status';
 	import type { QbitMainData } from '$lib/websocket';
 
 	export let data: PageData;
@@ -152,7 +153,10 @@
 						name: torrent.name || '',
 						size: formatSize(torrent.size || 0),
 						progress: (torrent.progress || 0) * 100, // Convertir en pourcentage
-						status: torrent.state || '',
+						status: mapTorrentStatus(torrent).primary,
+						statuses: mapTorrentStatus(torrent).secondary.concat([
+							mapTorrentStatus(torrent).primary
+						]),
 						dl_speed: formatSpeed(dlSpeed),
 						ul_speed: formatSpeed(ulSpeed),
 						instance:
@@ -394,7 +398,7 @@
 		...visibleStatuses.map((status) => ({
 			value: status,
 			label: status,
-			count: torrents.filter((t) => t.status === status).length
+			count: torrents.filter((t) => t.statuses.includes(status)).length
 		}))
 	];
 
@@ -436,7 +440,7 @@
 	$: filteredTorrents = torrents.filter((torrent) => {
 		if (searchFilter && !torrent.name.toLowerCase().includes(searchFilter.toLowerCase()))
 			return false;
-		if (statusFilter && torrent.status !== statusFilter) return false;
+		if (statusFilter && !torrent.statuses.includes(statusFilter)) return false;
 		if (instanceFilter && torrent.instance !== instanceFilter) return false;
 		if (categoryFilter && torrent.category !== categoryFilter) return false;
 		if (tagFilter && !torrent.tags.includes(tagFilter)) return false;

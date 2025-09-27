@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
 
 	export let data: PageData;
 
@@ -10,6 +11,88 @@
 	let selectedStatuses: string[] = [...data.config.settings.visibleStatuses];
 	let visibleStatuses: string[];
 	let settingsForm: HTMLFormElement;
+
+	// --- GESTION DU SCROLL ---
+	let showStickyHeader = false;
+	let showFilters = false;
+	let lastScrollPosition = 0;
+
+	// --- GESTION DU THÈME ---
+	let isDarkMode = false;
+
+	// Référence pour l'élément des filtres
+	let filtersElement: HTMLElement;
+
+	// Fonction pour détecter le scroll
+	function handleScroll() {
+		const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+
+		// Vérifier si les filtres sont visibles
+		if (filtersElement) {
+			const filtersRect = filtersElement.getBoundingClientRect();
+			const filtersVisible = filtersRect.bottom > 0;
+
+			// Afficher le header sticky si les filtres ne sont plus visibles
+			showStickyHeader = !filtersVisible;
+		}
+
+		lastScrollPosition = currentScrollPosition;
+	}
+
+	// Fonction pour faire défiler vers le haut
+	function scrollToTop() {
+		window.scrollTo({
+			top: 0,
+			behavior: 'smooth'
+		});
+	}
+
+	// Fonction pour afficher/masquer les filtres
+	function toggleFilters() {
+		showFilters = !showFilters;
+	}
+
+	// Fonction pour basculer le thème
+	function toggleTheme() {
+		isDarkMode = !isDarkMode;
+		updateTheme();
+	}
+
+	// Fonction pour mettre à jour le thème
+	function updateTheme() {
+		const html = document.documentElement;
+		const icon = document.querySelector('#theme-switcher i');
+
+		if (isDarkMode) {
+			html.classList.add('dark-mode');
+			if (icon) icon.className = 'fas fa-sun';
+			localStorage.setItem('theme', 'dark');
+		} else {
+			html.classList.remove('dark-mode');
+			if (icon) icon.className = 'fas fa-moon';
+			localStorage.setItem('theme', 'light');
+		}
+	}
+
+	onMount(() => {
+		// Ajouter l'écouteur d'événement de scroll
+		window.addEventListener('scroll', handleScroll);
+
+		// Vérifier la préférence stockée ou utiliser la préférence système pour le thème
+		const savedTheme = localStorage.getItem('theme');
+		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+		if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+			isDarkMode = true;
+		}
+
+		updateTheme();
+
+		// Nettoyer l'écouteur d'événement lors de la destruction du composant
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+		};
+	});
 
 	$: selectedStatuses = [...data.config.settings.visibleStatuses];
 
@@ -867,7 +950,151 @@
 	];
 </script>
 
-<div class="info-bar">
+<!-- Header sticky qui apparaît lors du scroll -->
+{#if showStickyHeader}
+	<header class="header sticky-header">
+		<div class="logo">
+			<a href="/" style="text-decoration: none; color: inherit">QBIT / NEXUS</a>
+		</div>
+		<div class="sticky-actions">
+			<button class="sticky-btn" on:click={toggleFilters}>
+				<i class="fas fa-filter"></i> Filtre
+			</button>
+			<button class="sticky-btn" on:click={scrollToTop}>
+				<i class="fas fa-arrow-up"></i> Remonter
+			</button>
+		</div>
+		<nav class="nav">
+			<a href="/" class="nav-item">DASHBOARD</a>
+			<a href="/settings" class="nav-item">SETTINGS</a>
+			<div id="theme-switcher" class="nav-item" on:click={toggleTheme}>
+				<i class="fas fa-moon"></i>
+			</div>
+		</nav>
+	</header>
+{/if}
+
+<!-- Filtres qui apparaissent quand on clique sur le bouton Filtre du header sticky -->
+{#if showFilters}
+	<div class="sticky-filters">
+		<div class="toolbar">
+			<div class="filters">
+				<div class="filter-row">
+					<label for="search">Recherche:</label>
+					<input
+						id="search"
+						type="search"
+						placeholder="Filter by name..."
+						bind:value={searchFilter}
+					/>
+				</div>
+				<div class="filter-row">
+					<div class="custom-select">
+						<label>Catégorie:</label>
+						<button on:click={() => (categoryDropdownOpen = !categoryDropdownOpen)}>
+							{categoryOptions.find((o) => o.value === categoryFilter)?.label || 'Toutes'} ({categoryOptions.find(
+								(o) => o.value === categoryFilter
+							)?.count || torrents.length})
+							<svg
+								class="arrow"
+								class:open={categoryDropdownOpen}
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg
+							>
+						</button>
+						{#if categoryDropdownOpen}
+							<div class="dropdown">
+								{#each categoryOptions as option}
+									<div
+										class="option"
+										on:click={() => {
+											categoryFilter = option.value;
+											categoryDropdownOpen = false;
+										}}
+									>
+										{option.label} ({option.count})
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+					<div class="custom-select">
+						<label>Instance:</label>
+						<button on:click={() => (instanceDropdownOpen = !instanceDropdownOpen)}>
+							{instanceOptions.find((o) => o.value === instanceFilter)?.label || 'Toutes'} ({instanceOptions.find(
+								(o) => o.value === instanceFilter
+							)?.count || torrents.length})
+							<svg
+								class="arrow"
+								class:open={instanceDropdownOpen}
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg
+							>
+						</button>
+						{#if instanceDropdownOpen}
+							<div class="dropdown">
+								{#each instanceOptions as option}
+									<div
+										class="option"
+										on:click={() => {
+											instanceFilter = option.value;
+											instanceDropdownOpen = false;
+										}}
+									>
+										{option.label} ({option.count})
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+					<div class="custom-select">
+						<label>Tag:</label>
+						<button on:click={() => (tagDropdownOpen = !tagDropdownOpen)}>
+							{tagOptions.find((o) => o.value === tagFilter)?.label || 'Tous'} ({tagOptions.find(
+								(o) => o.value === tagFilter
+							)?.count || torrents.length})
+							<svg
+								class="arrow"
+								class:open={tagDropdownOpen}
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"><polyline points="6,9 12,15 18,9"></polyline></svg
+							>
+						</button>
+						{#if tagDropdownOpen}
+							<div class="dropdown">
+								{#each tagOptions as option}
+									<div
+										class="option"
+										on:click={() => {
+											tagFilter = option.value;
+											tagDropdownOpen = false;
+										}}
+									>
+										{option.label} ({option.count})
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<div class="info-bar" bind:this={filtersElement}>
 	<div class="instance-summary">
 		{#each instances as instance}
 			<div class="instance-stat-card">
@@ -1728,5 +1955,110 @@
 	:global(html.dark-mode .filter-row label),
 	:global(html.dark-mode .custom-select label) {
 		color: var(--secondary-text-color);
+	}
+	/* --- Header sticky et filtres --- */
+	.sticky-header {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		padding: var(--spacing-unit) calc(var(--spacing-unit) * 4);
+		border-bottom: 1px solid var(--border-color);
+		background-color: var(--card-background-color);
+		z-index: 100;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		animation: slideDown 0.3s ease-out;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.sticky-header .logo {
+		font-weight: 700;
+		letter-spacing: 0.05em;
+	}
+
+	.sticky-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.sticky-btn {
+		background-color: var(--accent-color);
+		color: white;
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 4px;
+		font-weight: 600;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		transition: background-color 0.2s;
+	}
+
+	.sticky-btn i {
+		color: white;
+	}
+
+	.sticky-btn:hover {
+		background-color: var(--accent-color-hover, #0056b3);
+	}
+
+	.sticky-filters {
+		position: fixed;
+		top: 60px;
+		left: 0;
+		right: 0;
+		background-color: var(--card-background-color);
+		border-bottom: 1px solid var(--border-color);
+		z-index: 99;
+		padding: 0.75rem 1rem;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		animation: slideDown 0.3s ease-out;
+	}
+
+	@keyframes slideDown {
+		from {
+			transform: translateY(-100%);
+			opacity: 0;
+		}
+		to {
+			transform: translateY(0);
+			opacity: 1;
+		}
+	}
+
+	/* Dark mode styles pour le header sticky */
+	:global(html.dark-mode .sticky-header),
+	:global(html.dark-mode .sticky-filters) {
+		background-color: var(--card-background-color);
+		border-color: var(--border-color);
+	}
+
+	:global(html.dark-mode .sticky-header .logo) {
+		color: var(--primary-text-color);
+	}
+
+	:global(html.dark-mode .sticky-btn) {
+		background-color: var(--accent-color);
+		color: white;
+	}
+
+	:global(html.dark-mode .sticky-btn:hover) {
+		background-color: var(--accent-color-hover, #0056b3);
+	}
+
+	/* Responsive styles pour le header sticky */
+	@media (max-width: 600px) {
+		.sticky-header {
+			padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
+		}
+	}
+
+	@media (max-width: 400px) {
+		.sticky-header {
+			padding: 1rem;
+		}
 	}
 </style>

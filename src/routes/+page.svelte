@@ -16,6 +16,10 @@
 	let visibleStatuses: string[];
 	let settingsForm: HTMLFormElement;
 
+	// --- GESTION DES TABS DANS LA POPUP ---
+	let activeTab = 'general';
+	let torrentDetails: any = null;
+
 	// --- GESTION DU SCROLL ---
 	let showStickyHeader = false;
 	let showFilters = false;
@@ -59,6 +63,12 @@
 			top: 0,
 			behavior: 'smooth'
 		});
+	}
+
+	// Fonction pour sélectionner un torrent et réinitialiser l'onglet
+	function selectTorrent(torrent: any) {
+		selectedTorrent = torrent;
+		activeTab = 'general';
 	}
 
 	// Fonction pour afficher/masquer les filtres
@@ -932,7 +942,7 @@
 				<tbody>
 					{#each sortedTorrents as torrent (torrent.id)}
 						<tr
-							on:click={() => (selectedTorrent = torrent)}
+							on:click={() => selectTorrent(torrent)}
 							class:selected={selectedTorrent?.id === torrent.id}
 						>
 							<td class="name">{torrent.name}</td>
@@ -965,14 +975,87 @@
 			</div>
 			<div class="panel-content">
 				<div class="tabs">
-					<button class="tab active">General</button>
-					<button class="tab" disabled>Trackers</button>
-					<button class="tab" disabled>Peers</button>
-					<button class="tab" disabled>Files</button>
+					<button
+						class="tab {activeTab === 'general' ? 'active' : ''}"
+						on:click={() => (activeTab = 'general')}
+					>
+						General
+					</button>
+					<button
+						class="tab {activeTab === 'trackers' ? 'active' : ''}"
+						on:click={() => (activeTab = 'trackers')}
+					>
+						Trackers
+					</button>
+					<button
+						class="tab {activeTab === 'peers' ? 'active' : ''}"
+						on:click={() => (activeTab = 'peers')}
+					>
+						Peers
+					</button>
+					<button
+						class="tab {activeTab === 'files' ? 'active' : ''}"
+						on:click={() => (activeTab = 'files')}
+					>
+						Files
+					</button>
 				</div>
 				<div class="tab-content">
-					<p><strong>Status:</strong> {selectedTorrent.status}</p>
-					<p><strong>Instance:</strong> {selectedTorrent.instance}</p>
+					{#if activeTab === 'general'}
+						<div class="general-info">
+							<div class="info-row">
+								<span class="info-label">Status:</span>
+								<span class="info-value">{selectedTorrent.status}</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Instance:</span>
+								<span class="info-value">{selectedTorrent.instance}</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Size:</span>
+								<span class="info-value">{selectedTorrent.size}</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Progress:</span>
+								<span class="info-value">{selectedTorrent.progress.toFixed(1)}%</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Download Speed:</span>
+								<span class="info-value">{selectedTorrent.dl_speed}</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Upload Speed:</span>
+								<span class="info-value">{selectedTorrent.ul_speed}</span>
+							</div>
+							{#if selectedTorrent.category}
+								<div class="info-row">
+									<span class="info-label">Category:</span>
+									<span class="info-value">{selectedTorrent.category}</span>
+								</div>
+							{/if}
+							{#if selectedTorrent.tags && selectedTorrent.tags.length > 0}
+								<div class="info-row">
+									<span class="info-label">Tags:</span>
+									<span class="info-value">{selectedTorrent.tags.join(', ')}</span>
+								</div>
+							{/if}
+						</div>
+					{:else if activeTab === 'trackers'}
+						<div class="empty-state">
+							<i class="fas fa-exclamation-circle"></i>
+							<p>Tracker information not available</p>
+						</div>
+					{:else if activeTab === 'peers'}
+						<div class="empty-state">
+							<i class="fas fa-exclamation-circle"></i>
+							<p>Peer information not available</p>
+						</div>
+					{:else if activeTab === 'files'}
+						<div class="empty-state">
+							<i class="fas fa-exclamation-circle"></i>
+							<p>File information not available</p>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -1396,7 +1479,7 @@
 	.info-panel {
 		background-color: var(--card-background-color);
 		border-top: 2px solid var(--border-color);
-		height: 250px;
+		height: 300px;
 		display: flex;
 		flex-direction: column;
 		position: fixed;
@@ -1404,20 +1487,44 @@
 		left: 0;
 		right: 0;
 		z-index: 10;
+		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 	}
 	.panel-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 0.5rem 1rem;
+		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--border-color);
 		font-weight: 700;
+		background-color: var(--background-color);
+	}
+	.panel-header h3 {
+		margin: 0;
+		font-size: 1rem;
+		color: var(--primary-text-color);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: calc(100% - 50px);
 	}
 	.close-btn {
 		background: none;
 		border: none;
 		font-size: 1.5rem;
 		cursor: pointer;
+		color: var(--primary-text-color);
+		padding: 0;
+		line-height: 1;
+		width: 30px;
+		height: 30px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 3px;
+		transition: background-color 0.2s;
+	}
+	.close-btn:hover {
+		background-color: var(--background-color);
 	}
 	.panel-content {
 		padding: 1rem;
@@ -1426,7 +1533,7 @@
 	}
 	.tabs {
 		display: flex;
-		gap: 0.25rem;
+		gap: 0;
 		border-bottom: 1px solid var(--border-color);
 		margin-bottom: 1rem;
 	}
@@ -1436,10 +1543,65 @@
 		padding: 0.5rem 1rem;
 		cursor: pointer;
 		border-bottom: 2px solid transparent;
+		color: var(--secondary-text-color);
+		font-size: 0.9rem;
+		transition: all 0.2s;
+		border-radius: 0;
+	}
+	.tab:hover {
+		background-color: var(--background-color);
+		color: var(--primary-text-color);
 	}
 	.tab.active {
 		border-bottom-color: var(--accent-color);
 		font-weight: 700;
+		color: var(--primary-text-color);
+	}
+	.tab-content {
+		flex-grow: 1;
+		overflow-y: auto;
+	}
+	.general-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	.info-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.25rem 0;
+		border-bottom: 1px solid var(--border-color);
+	}
+	.info-row:last-child {
+		border-bottom: none;
+	}
+	.info-label {
+		font-weight: 600;
+		color: var(--secondary-text-color);
+		font-size: 0.9rem;
+	}
+	.info-value {
+		color: var(--primary-text-color);
+		font-size: 0.9rem;
+	}
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: var(--secondary-text-color);
+		text-align: center;
+	}
+	.empty-state i {
+		font-size: 2rem;
+		margin-bottom: 0.5rem;
+		opacity: 0.5;
+	}
+	.empty-state p {
+		margin: 0;
+		font-size: 0.9rem;
 	}
 
 	/* Dark mode styles */
@@ -1449,9 +1611,49 @@
 	:global(html.dark-mode .status-settings),
 	:global(html.dark-mode .dropdown),
 	:global(html.dark-mode .table-container),
-	:global(html.dark-mode .info-panel) {
+	:global(html.dark-mode .info-panel),
+	:global(html.dark-mode .panel-header),
+	:global(html.dark-mode .panel-content) {
 		background-color: var(--card-background-color);
 		border-color: var(--border-color);
+	}
+
+	:global(html.dark-mode .close-btn) {
+		color: var(--primary-text-color);
+	}
+
+	:global(html.dark-mode .close-btn:hover) {
+		background-color: var(--background-color);
+	}
+
+	:global(html.dark-mode .tab) {
+		color: var(--secondary-text-color);
+	}
+
+	:global(html.dark-mode .tab:hover) {
+		background-color: var(--background-color);
+		color: var(--primary-text-color);
+	}
+
+	:global(html.dark-mode .tab.active) {
+		color: var(--primary-text-color);
+		border-bottom-color: var(--accent-color);
+	}
+
+	:global(html.dark-mode .info-label) {
+		color: var(--secondary-text-color);
+	}
+
+	:global(html.dark-mode .info-value) {
+		color: var(--primary-text-color);
+	}
+
+	:global(html.dark-mode .empty-state) {
+		color: var(--secondary-text-color);
+	}
+
+	:global(html.dark-mode .info-row) {
+		border-bottom-color: var(--border-color);
 	}
 
 	:global(html.dark-mode .custom-select button),

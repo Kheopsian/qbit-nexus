@@ -966,101 +966,105 @@
 			</table>
 		</div>
 	</div>
+</div>
 
-	{#if selectedTorrent}
-		<div class="info-panel">
-			<div class="panel-header">
-				<h3>{selectedTorrent.name}</h3>
-				<button class="close-btn" on:click={() => (selectedTorrent = null)}>×</button>
+{#if selectedTorrent}
+	<div class="info-panel">
+		<div class="panel-header">
+			<h3>{selectedTorrent.name}</h3>
+			<button class="close-btn" on:click={() => (selectedTorrent = null)}>×</button>
+		</div>
+		<div class="panel-content">
+			<div class="tabs">
+				<button
+					class="tab {activeTab === 'general' ? 'active' : ''}"
+					on:click={() => (activeTab = 'general')}
+				>
+					General
+				</button>
+				<button
+					class="tab {activeTab === 'trackers' ? 'active' : ''}"
+					on:click={() => (activeTab = 'trackers')}
+				>
+					Trackers
+				</button>
+				<button
+					class="tab {activeTab === 'peers' ? 'active' : ''}"
+					on:click={() => (activeTab = 'peers')}
+				>
+					Peers
+				</button>
+				<button
+					class="tab {activeTab === 'files' ? 'active' : ''}"
+					on:click={() => (activeTab = 'files')}
+				>
+					Files
+				</button>
 			</div>
-			<div class="panel-content">
-				<div class="tabs">
-					<button
-						class="tab {activeTab === 'general' ? 'active' : ''}"
-						on:click={() => (activeTab = 'general')}
-					>
-						General
-					</button>
-					<button
-						class="tab {activeTab === 'trackers' ? 'active' : ''}"
-						on:click={() => (activeTab = 'trackers')}
-					>
-						Trackers
-					</button>
-					<button
-						class="tab {activeTab === 'peers' ? 'active' : ''}"
-						on:click={() => (activeTab = 'peers')}
-					>
-						Peers
-					</button>
-					<button
-						class="tab {activeTab === 'files' ? 'active' : ''}"
-						on:click={() => (activeTab = 'files')}
-					>
-						Files
-					</button>
-				</div>
-				<div class="tab-content">
-					{#if activeTab === 'general'}
-						<div class="general-info">
-							<div class="info-row">
-								<span class="info-label">Status:</span>
-								<span class="info-value">{selectedTorrent.status}</span>
-							</div>
-							<div class="info-row">
-								<span class="info-label">Instance:</span>
-								<span class="info-value">{selectedTorrent.instance}</span>
-							</div>
-							<div class="info-row">
-								<span class="info-label">Size:</span>
-								<span class="info-value">{selectedTorrent.size}</span>
-							</div>
-							<div class="info-row">
-								<span class="info-label">Progress:</span>
-								<span class="info-value">{selectedTorrent.progress.toFixed(1)}%</span>
-							</div>
-							<div class="info-row">
-								<span class="info-label">Download Speed:</span>
-								<span class="info-value">{selectedTorrent.dl_speed}</span>
-							</div>
-							<div class="info-row">
-								<span class="info-label">Upload Speed:</span>
-								<span class="info-value">{selectedTorrent.ul_speed}</span>
-							</div>
-							{#if selectedTorrent.category}
-								<div class="info-row">
-									<span class="info-label">Category:</span>
-									<span class="info-value">{selectedTorrent.category}</span>
-								</div>
-							{/if}
-							{#if selectedTorrent.tags && selectedTorrent.tags.length > 0}
-								<div class="info-row">
-									<span class="info-label">Tags:</span>
-									<span class="info-value">{selectedTorrent.tags.join(', ')}</span>
-								</div>
-							{/if}
+			<div class="tab-content">
+				{#if activeTab === 'general'}
+					<div class="general-info-grid">
+						<div class="info-row">
+							<span class="info-label">Status:</span>
+							<span class="info-value">{selectedTorrent.status}</span>
 						</div>
-					{:else if activeTab === 'trackers'}
-						<div class="empty-state">
-							<i class="fas fa-exclamation-circle"></i>
-							<p>Tracker information not available</p>
+						<div class="info-row">
+							<span class="info-label">Instance:</span>
+							<span class="info-value">{selectedTorrent.instance}</span>
 						</div>
-					{:else if activeTab === 'peers'}
-						<div class="empty-state">
-							<i class="fas fa-exclamation-circle"></i>
-							<p>Peer information not available</p>
+						<div class="info-row">
+							<span class="info-label">Size:</span>
+							<span class="info-value">{selectedTorrent.size}</span>
 						</div>
-					{:else if activeTab === 'files'}
-						<div class="empty-state">
-							<i class="fas fa-exclamation-circle"></i>
-							<p>File information not available</p>
+						<div class="info-row">
+							<span class="info-label">Progress:</span>
+							<span class="info-value">{selectedTorrent.progress.toFixed(1)}%</span>
 						</div>
-					{/if}
-				</div>
+						<div class="info-row">
+							<span class="info-label">Download Speed:</span>
+							<span class="info-value">{selectedTorrent.dl_speed}</span>
+						</div>
+						<div class="info-row">
+							<span class="info-label">Upload Speed:</span>
+							<span class="info-value">{selectedTorrent.ul_speed}</span>
+						</div>
+						{#if selectedTorrent.category}
+							<div class="info-row">
+								<span class="info-label">Category:</span>
+								<span class="info-value">{selectedTorrent.category}</span>
+							</div>
+						{/if}
+						{#if selectedTorrent.tags && selectedTorrent.tags.length > 0}
+							<div class="info-row">
+								<span class="info-label">Tags:</span>
+								<span class="info-value"
+									>{Array.isArray(selectedTorrent.tags)
+										? selectedTorrent.tags.join(', ')
+										: selectedTorrent.tags}</span
+								>
+							</div>
+						{/if}
+					</div>
+				{:else if activeTab === 'trackers'}
+					<div class="empty-state">
+						<i class="fas fa-exclamation-circle"></i>
+						<p>Tracker information not available</p>
+					</div>
+				{:else if activeTab === 'peers'}
+					<div class="empty-state">
+						<i class="fas fa-exclamation-circle"></i>
+						<p>Peer information not available</p>
+					</div>
+				{:else if activeTab === 'files'}
+					<div class="empty-state">
+						<i class="fas fa-exclamation-circle"></i>
+						<p>File information not available</p>
+					</div>
+				{/if}
 			</div>
 		</div>
-	{/if}
-</div>
+	</div>
+{/if}
 
 <style>
 	/* --- Barre d'info supérieure --- */
@@ -1479,14 +1483,15 @@
 	.info-panel {
 		background-color: var(--card-background-color);
 		border-top: 2px solid var(--border-color);
-		height: 300px;
+		min-height: 300px;
+		max-height: 80vh;
 		display: flex;
 		flex-direction: column;
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
-		z-index: 10;
+		z-index: 1000;
 		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 	}
 	.panel-header {
@@ -1566,6 +1571,25 @@
 		flex-direction: column;
 		gap: 0.5rem;
 	}
+	.general-info-grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		column-gap: 3rem;
+		row-gap: 0.5rem;
+	}
+
+	.info-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 1rem;
+	}
+
+	.info-item {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
 	.info-row {
 		display: flex;
 		justify-content: space-between;

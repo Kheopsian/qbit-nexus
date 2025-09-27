@@ -15,6 +15,7 @@
 	// --- GESTION DU SCROLL ---
 	let showStickyHeader = false;
 	let showFilters = false;
+	let isClosingFilters = false;
 	let lastScrollPosition = 0;
 
 	// --- GESTION DU THÈME ---
@@ -34,6 +35,15 @@
 
 			// Afficher le header sticky si les filtres ne sont plus visibles
 			showStickyHeader = !filtersVisible;
+		}
+
+		// Fermer le bandeau de filtres lors du scroll avec animation
+		if (showFilters && !isClosingFilters) {
+			isClosingFilters = true;
+			setTimeout(() => {
+				showFilters = false;
+				isClosingFilters = false;
+			}, 300); // Durée correspondant à l'animation
 		}
 
 		lastScrollPosition = currentScrollPosition;
@@ -975,8 +985,8 @@
 {/if}
 
 <!-- Filtres qui apparaissent quand on clique sur le bouton Filtre du header sticky -->
-{#if showFilters}
-	<div class="sticky-filters">
+{#if showFilters || isClosingFilters}
+	<div class="sticky-filters" class:closing={isClosingFilters}>
 		<div class="toolbar">
 			<div class="filters">
 				<div class="filter-row">
@@ -2016,6 +2026,9 @@
 		padding: 0.75rem 1rem;
 		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 		animation: slideDown 0.3s ease-out;
+		width: 33.33%;
+		max-width: 600px;
+		margin: 0 auto;
 	}
 
 	@keyframes slideDown {
@@ -2029,13 +2042,29 @@
 		}
 	}
 
-	/* Dark mode styles pour le header sticky */
-	:global(html.dark-mode .sticky-header),
-	:global(html.dark-mode .sticky-filters) {
-		background-color: var(--card-background-color);
-		border-color: var(--border-color);
+	@keyframes slideUp {
+		from {
+			transform: translateY(0);
+			opacity: 1;
+		}
+		to {
+			transform: translateY(-100%);
+			opacity: 0;
+		}
 	}
 
+	.sticky-filters {
+		transition:
+			opacity 0.3s ease-out,
+			transform 0.3s ease-out;
+	}
+
+	.sticky-filters.closing {
+		animation: slideUp 0.3s ease-out forwards;
+	}
+
+	/* Dark mode styles pour le header sticky */
+	:global(html.dark-mode .sticky-header),
 	:global(html.dark-mode .sticky-header .logo) {
 		color: var(--primary-text-color);
 	}

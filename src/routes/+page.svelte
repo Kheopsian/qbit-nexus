@@ -69,6 +69,7 @@
 	function selectTorrent(torrent: any) {
 		selectedTorrent = torrent;
 		activeTab = 'general';
+		fetchTorrentDetails(torrent);
 	}
 
 	// Fonction pour afficher/masquer les filtres
@@ -117,6 +118,24 @@
 			window.removeEventListener('scroll', handleScroll);
 		};
 	});
+
+	async function fetchTorrentDetails(torrent: any) {
+		try {
+			const instanceId = torrent.instanceId;
+			const hash = torrent.hash;
+			const response = await fetch(`/api/torrent-details?instanceId=${instanceId}&hash=${hash}`);
+			if (!response.ok) {
+				throw new Error(
+					`Erreur lors de la récupération des détails du torrent: ${response.status}`
+				);
+			}
+			const data = await response.json();
+			torrentDetails = data;
+		} catch (error) {
+			console.error('Erreur lors de la récupération des détails du torrent:', error);
+			torrentDetails = null;
+		}
+	}
 
 	$: selectedStatuses = [...data.config.settings.visibleStatuses];
 
@@ -1046,10 +1065,41 @@
 						{/if}
 					</div>
 				{:else if activeTab === 'trackers'}
-					<div class="empty-state">
-						<i class="fas fa-exclamation-circle"></i>
-						<p>Tracker information not available</p>
-					</div>
+					{#if torrentDetails && torrentDetails.trackers}
+						<div class="tracker-info">
+							<table class="tracker-table">
+								<thead>
+									<tr>
+										<th>URL</th>
+										<th>Status</th>
+										<th>Peers</th>
+										<th>Seeds</th>
+										<th>Leeches</th>
+										<th>Downloaded</th>
+										<th>Message</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each torrentDetails.trackers as tracker}
+										<tr>
+											<td>{tracker.url}</td>
+											<td>{tracker.status}</td>
+											<td>{tracker.peers}</td>
+											<td>{tracker.seeds}</td>
+											<td>{tracker.leeches}</td>
+											<td>{tracker.downloaded}</td>
+											<td>{tracker.msg}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<div class="empty-state">
+							<i class="fas fa-spinner fa-spin"></i>
+							<p>Chargement des informations des trackers...</p>
+						</div>
+					{/if}
 				{:else if activeTab === 'peers'}
 					<div class="empty-state">
 						<i class="fas fa-exclamation-circle"></i>
@@ -1637,7 +1687,8 @@
 	:global(html.dark-mode .table-container),
 	:global(html.dark-mode .info-panel),
 	:global(html.dark-mode .panel-header),
-	:global(html.dark-mode .panel-content) {
+	:global(html.dark-mode .panel-content),
+	:global(html.dark-mode .tracker-table) {
 		background-color: var(--card-background-color);
 		border-color: var(--border-color);
 	}

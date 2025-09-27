@@ -1,28 +1,28 @@
 {
-  "instances": [
-    {
-      "id": 1758920830841,
-      "name": "Qbit1",
-      "url": "http://192.168.1.200:8080",
-      "user": "admin@admin.fr",
-      "pass": "admin"
-    }
-  ],
-  "settings": {
-    "visibleStatuses": [
-      "Downloading",
-      "Seeding",
-      "Completed",
-      "Running",
-      "Stopped",
-      "Active",
-      "Inactive",
-      "Stalled",
-      "Stalled uploading",
-      "Stalled downloading",
-      "Checking",
-      "Moving",
-      "Errored"
-    ]
-  }
+	"instances": [
+		{
+			"id": 1758920830841,
+			"name": "Qbit1",
+			"url": "http://192.168.1.200:8080",
+			"user": "Kheopsian917",
+			"pass": "6937iDqdetnA67Vm6dS1ICk0"
+		}
+	],
+	"settings": {
+		"visibleStatuses": [
+			"Downloading",
+			"Seeding",
+			"Completed",
+			"Running",
+			"Stopped",
+			"Active",
+			"Inactive",
+			"Stalled",
+			"Stalled uploading",
+			"Stalled downloading",
+			"Checking",
+			"Moving",
+			"Errored"
+		]
+	}
 }

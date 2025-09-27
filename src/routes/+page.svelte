@@ -3,6 +3,9 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { qbitData, wsConnectionStatus } from '$lib/websocket-client';
+	import { disconnectWebSocket } from '$lib/websocket-client';
+	import type { QbitMainData } from '$lib/websocket';
 
 	export let data: PageData;
 
@@ -105,6 +108,93 @@
 	});
 
 	$: selectedStatuses = [...data.config.settings.visibleStatuses];
+
+	// --- DONNÉES WEBSOCKET ---
+	$: aggregatedData = $qbitData;
+	$: connectionStatus = $wsConnectionStatus;
+
+	// Extraire les instances des données WebSocket
+	$: instances = data.config.instances.map((instance: any) => {
+		const instanceData = aggregatedData?.instances?.[instance.id];
+		const serverState = instanceData?.server_state as any;
+		const torrents = (instanceData?.torrents as Record<string, any>) || {};
+
+		// Calculer les statistiques
+		const dlSpeed = serverState?.dl_info_speed || 0;
+		const ulSpeed = serverState?.up_info_speed || 0;
+		const activeTorrents = serverState?.active_torrents || 0;
+		const totalTorrents = Object.keys(torrents).length;
+
+		return {
+			id: instance.id,
+			name: instance.name,
+			status: connectionStatus === 'connected' ? 'online' : 'offline',
+			dl: formatSpeed(dlSpeed),
+			ul: formatSpeed(ulSpeed),
+			activeTorrents,
+			totalTorrents
+		};
+	});
+
+	// Extraire tous les torrents de toutes les instances
+	$: allTorrents = aggregatedData
+		? Object.entries(aggregatedData.instances || {}).flatMap(([instanceId, instanceData]) => {
+				const torrents = (instanceData?.torrents as Record<string, any>) || {};
+				return Object.entries(torrents).map(([hash, torrent]: [string, any]) => {
+					// Formater les vitesses en chaînes de caractères
+					const dlSpeed = torrent.dlspeed || 0;
+					const ulSpeed = torrent.upspeed || 0;
+
+					return {
+						...torrent,
+						id: hash, // Utiliser le hash comme ID
+						hash,
+						name: torrent.name || '',
+						size: formatSize(torrent.size || 0),
+						progress: (torrent.progress || 0) * 100, // Convertir en pourcentage
+						status: torrent.state || '',
+						dl_speed: formatSpeed(dlSpeed),
+						ul_speed: formatSpeed(ulSpeed),
+						instance:
+							data.config.instances.find((inst: any) => inst.id === parseInt(instanceId))?.name ||
+							'Unknown',
+						instanceId: parseInt(instanceId),
+						category: torrent.category || '',
+						tags: torrent.tags || []
+					};
+				});
+			})
+		: [];
+
+	// Fonction pour formater les vitesses
+	function formatSpeed(bytesPerSecond: number): string {
+		if (bytesPerSecond === 0) return '0 B/s';
+		const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+		let value = bytesPerSecond;
+		let unitIndex = 0;
+
+		while (value >= 1024 && unitIndex < units.length - 1) {
+			value /= 1024;
+			unitIndex++;
+		}
+
+		return `${value.toFixed(1)} ${units[unitIndex]}`;
+	}
+
+	// Fonction pour formater les tailles
+	function formatSize(bytes: number): string {
+		if (bytes === 0) return '0 B';
+		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		let value = bytes;
+		let unitIndex = 0;
+
+		while (value >= 1024 && unitIndex < units.length - 1) {
+			value /= 1024;
+			unitIndex++;
+		}
+
+		return `${value.toFixed(1)} ${units[unitIndex]}`;
+	}
 
 	// --- TRI DES COLONNES ---
 	let sortKey = 'name';
@@ -209,11 +299,8 @@
 	let categoryDropdownOpen = false;
 	let tagDropdownOpen = false;
 
-	// --- DONNÉES MOCKÉES ---
-	const instances = [
-		{ name: 'Seedbox-FR', status: 'online', dl: '80.2 MB/s', ul: '20.1 MB/s' },
-		{ name: 'Serveur-US', status: 'online', dl: '32.3 MB/s', ul: '25.7 MB/s' }
-	];
+	// --- DONNÉES WEBSOCKET ---
+	// Les instances sont maintenant calculées de manière réactive plus haut
 
 	const globalStats = {
 		downloadSpeed: '112.5 MB/s',
@@ -356,608 +443,8 @@
 		return true;
 	});
 
-	const torrents = [
-		{
-			id: 1,
-			name: 'Ubuntu.24.04.LTS.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '4.6 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '12.3 MB/s'
-		},
-		{
-			id: 2,
-			name: 'ArchLinux.Latest.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '870 MB',
-			progress: 76,
-			status: 'Downloading',
-			dl_speed: '15.4 MB/s',
-			ul_speed: '1.2 MB/s'
-		},
-		{
-			id: 3,
-			name: 'My.Awesome.Movie.2025.2160p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '22.1 GB',
-			progress: 23,
-			status: 'Downloading',
-			dl_speed: '16.9 MB/s',
-			ul_speed: '540 KB/s'
-		},
-		{
-			id: 4,
-			name: 'Old.Backup.File.zip',
-			instance: 'Seedbox-FR',
-			category: 'Backup',
-			tags: ['zip'],
-			size: '1.2 GB',
-			progress: 0,
-			status: 'Paused',
-			dl_speed: '0 B/s',
-			ul_speed: '0 B/s'
-		},
-		{
-			id: 5,
-			name: 'Fedora.40.Workstation.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '5.2 GB',
-			progress: 85,
-			status: 'Downloading',
-			dl_speed: '8.7 MB/s',
-			ul_speed: '2.1 MB/s'
-		},
-		{
-			id: 6,
-			name: 'Debian.12.Netinst.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '650 MB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '5.6 MB/s'
-		},
-		{
-			id: 7,
-			name: 'The.Matrix.Resurrections.2021.1080p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '8.5 GB',
-			progress: 67,
-			status: 'Downloading',
-			dl_speed: '22.3 MB/s',
-			ul_speed: '1.8 MB/s'
-		},
-		{
-			id: 8,
-			name: 'Project.Backup.2024.tar.gz',
-			instance: 'Seedbox-FR',
-			category: 'Backup',
-			tags: ['tar', 'gz'],
-			size: '3.8 GB',
-			progress: 45,
-			status: 'Downloading',
-			dl_speed: '9.2 MB/s',
-			ul_speed: '0 B/s'
-		},
-		{
-			id: 9,
-			name: 'Windows.11.Pro.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['windows', 'iso'],
-			size: '6.1 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '18.9 MB/s'
-		},
-		{
-			id: 10,
-			name: 'Documentary.Nature.2025.720p.mp4',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['documentary', '720p'],
-			size: '2.3 GB',
-			progress: 92,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '7.4 MB/s'
-		},
-		{
-			id: 11,
-			name: 'Database.Backup.sql.gz',
-			instance: 'Serveur-US',
-			category: 'Backup',
-			tags: ['sql', 'gz'],
-			size: '1.9 GB',
-			progress: 0,
-			status: 'Paused',
-			dl_speed: '0 B/s',
-			ul_speed: '0 B/s'
-		},
-		{
-			id: 12,
-			name: 'Manjaro.KDE.23.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '4.0 GB',
-			progress: 34,
-			status: 'Downloading',
-			dl_speed: '12.1 MB/s',
-			ul_speed: '3.2 MB/s'
-		},
-		{
-			id: 13,
-			name: 'CentOS.9.Stream.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '7.2 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '9.8 MB/s'
-		},
-		{
-			id: 14,
-			name: 'Kali.Linux.2024.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '3.9 GB',
-			progress: 50,
-			status: 'Downloading',
-			dl_speed: '14.5 MB/s',
-			ul_speed: '2.3 MB/s'
-		},
-		{
-			id: 15,
-			name: 'Gentoo.LiveCD.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '1.8 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '6.7 MB/s'
-		},
-		{
-			id: 16,
-			name: 'Slackware.15.0.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '4.7 GB',
-			progress: 20,
-			status: 'Downloading',
-			dl_speed: '18.2 MB/s',
-			ul_speed: '1.5 MB/s'
-		},
-		{
-			id: 17,
-			name: 'OpenSUSE.Leap.15.5.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '5.1 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '11.4 MB/s'
-		},
-		{
-			id: 18,
-			name: 'Elementary.OS.7.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '2.6 GB',
-			progress: 75,
-			status: 'Downloading',
-			dl_speed: '9.8 MB/s',
-			ul_speed: '3.1 MB/s'
-		},
-		{
-			id: 19,
-			name: 'Linux.Mint.21.2.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '2.9 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '8.9 MB/s'
-		},
-		{
-			id: 20,
-			name: 'Zorin.OS.16.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '4.1 GB',
-			progress: 40,
-			status: 'Downloading',
-			dl_speed: '13.7 MB/s',
-			ul_speed: '2.8 MB/s'
-		},
-		{
-			id: 21,
-			name: 'MX.Linux.23.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '2.4 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '7.2 MB/s'
-		},
-		{
-			id: 22,
-			name: 'Pop.OS.22.04.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '5.8 GB',
-			progress: 60,
-			status: 'Downloading',
-			dl_speed: '17.3 MB/s',
-			ul_speed: '1.9 MB/s'
-		},
-		{
-			id: 23,
-			name: 'Solus.Budgie.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '2.1 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '5.5 MB/s'
-		},
-		{
-			id: 24,
-			name: 'EndeavourOS.Artemis.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '2.7 GB',
-			progress: 30,
-			status: 'Downloading',
-			dl_speed: '11.6 MB/s',
-			ul_speed: '2.4 MB/s'
-		},
-		{
-			id: 25,
-			name: 'Garuda.Linux.KDE.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '3.3 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '10.1 MB/s'
-		},
-		{
-			id: 26,
-			name: 'Nobara.38.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '4.5 GB',
-			progress: 55,
-			status: 'Downloading',
-			dl_speed: '16.8 MB/s',
-			ul_speed: '3.7 MB/s'
-		},
-		{
-			id: 27,
-			name: 'Fedora.Silverblue.38.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '5.9 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '14.2 MB/s'
-		},
-		{
-			id: 28,
-			name: 'Ubuntu.Server.24.04.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '1.4 GB',
-			progress: 80,
-			status: 'Downloading',
-			dl_speed: '7.9 MB/s',
-			ul_speed: '1.1 MB/s'
-		},
-		{
-			id: 29,
-			name: 'Debian.Live.12.iso',
-			instance: 'Serveur-US',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '3.2 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '9.3 MB/s'
-		},
-		{
-			id: 30,
-			name: 'Arch.Linux.Install.iso',
-			instance: 'Seedbox-FR',
-			category: 'OS',
-			tags: ['linux', 'iso'],
-			size: '850 MB',
-			progress: 25,
-			status: 'Downloading',
-			dl_speed: '4.6 MB/s',
-			ul_speed: '0.8 MB/s'
-		},
-		{
-			id: 31,
-			name: 'The.Dark.Knight.2008.1080p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '12.5 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '25.7 MB/s'
-		},
-		{
-			id: 32,
-			name: 'Inception.2010.2160p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '28.9 GB',
-			progress: 45,
-			status: 'Downloading',
-			dl_speed: '31.2 MB/s',
-			ul_speed: '5.4 MB/s'
-		},
-		{
-			id: 33,
-			name: 'Pulp.Fiction.1994.720p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '4.8 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '12.8 MB/s'
-		},
-		{
-			id: 34,
-			name: 'Interstellar.2014.1080p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '15.2 GB',
-			progress: 70,
-			status: 'Downloading',
-			dl_speed: '28.9 MB/s',
-			ul_speed: '4.1 MB/s'
-		},
-		{
-			id: 35,
-			name: 'The.Shawshank.Redemption.1994.720p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '1.6 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '8.5 MB/s'
-		},
-		{
-			id: 36,
-			name: 'Dune.2021.2160p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '35.7 GB',
-			progress: 35,
-			status: 'Downloading',
-			dl_speed: '42.3 MB/s',
-			ul_speed: '6.8 MB/s'
-		},
-		{
-			id: 37,
-			name: 'Forrest.Gump.1994.1080p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '9.3 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '19.6 MB/s'
-		},
-		{
-			id: 38,
-			name: 'The.Godfather.1972.720p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '2.9 GB',
-			progress: 85,
-			status: 'Downloading',
-			dl_speed: '12.7 MB/s',
-			ul_speed: '2.9 MB/s'
-		},
-		{
-			id: 39,
-			name: 'Avatar.2009.2160p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '41.2 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '33.1 MB/s'
-		},
-		{
-			id: 40,
-			name: 'Fight.Club.1999.1080p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '11.8 GB',
-			progress: 50,
-			status: 'Downloading',
-			dl_speed: '25.4 MB/s',
-			ul_speed: '3.7 MB/s'
-		},
-		{
-			id: 41,
-			name: 'The.Lion.King.2019.720p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '3.2 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '11.5 MB/s'
-		},
-		{
-			id: 42,
-			name: 'Top.Gun.Maverick.2022.2160p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '26.8 GB',
-			progress: 65,
-			status: 'Downloading',
-			dl_speed: '38.9 MB/s',
-			ul_speed: '7.2 MB/s'
-		},
-		{
-			id: 43,
-			name: 'The.Avengers.2012.1080p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '14.7 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '29.4 MB/s'
-		},
-		{
-			id: 44,
-			name: 'Jurassic.Park.1993.720p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '2.1 GB',
-			progress: 90,
-			status: 'Downloading',
-			dl_speed: '9.8 MB/s',
-			ul_speed: '1.6 MB/s'
-		},
-		{
-			id: 45,
-			name: 'Guardians.of.the.Galaxy.2014.2160p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '32.4 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '27.8 MB/s'
-		},
-		{
-			id: 46,
-			name: 'The.Silence.of.the.Lambs.1991.1080p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '8.9 GB',
-			progress: 75,
-			status: 'Downloading',
-			dl_speed: '21.3 MB/s',
-			ul_speed: '4.5 MB/s'
-		},
-		{
-			id: 47,
-			name: 'Back.to.the.Future.1985.720p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '1.8 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '6.9 MB/s'
-		},
-		{
-			id: 48,
-			name: 'Spider.Man.No.Way.Home.2021.2160p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '2160p'],
-			size: '29.6 GB',
-			progress: 40,
-			status: 'Downloading',
-			dl_speed: '35.7 MB/s',
-			ul_speed: '5.9 MB/s'
-		},
-		{
-			id: 49,
-			name: 'The.Good.the.Bad.and.the.Ugly.1966.1080p.mkv',
-			instance: 'Serveur-US',
-			category: 'Media',
-			tags: ['movie', '1080p'],
-			size: '7.2 GB',
-			progress: 100,
-			status: 'Seeding',
-			dl_speed: '0 B/s',
-			ul_speed: '15.3 MB/s'
-		},
-		{
-			id: 50,
-			name: 'Star.Wars.Episode.IV.1977.720p.mkv',
-			instance: 'Seedbox-FR',
-			category: 'Media',
-			tags: ['movie', '720p'],
-			size: '2.5 GB',
-			progress: 55,
-			status: 'Downloading',
-			dl_speed: '14.2 MB/s',
-			ul_speed: '2.1 MB/s'
-		}
-	];
+	// Les torrents sont maintenant extraits des données WebSocket (allTorrents)
+	$: torrents = allTorrents;
 </script>
 
 <!-- Header sticky qui apparaît lors du scroll -->

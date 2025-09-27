@@ -306,15 +306,58 @@
 	// --- DONNÉES WEBSOCKET ---
 	// Les instances sont maintenant calculées de manière réactive plus haut
 
-	const globalStats = {
-		downloadSpeed: '112.5 MB/s',
-		uploadSpeed: '45.8 MB/s',
-		activeTorrents: 87,
-		totalTorrents: 1245,
-		totalDownloaded: '2.3 TB',
-		totalUploaded: '1.8 TB',
-		ratio: '1.27'
-	};
+	// Calculer les statistiques globales à partir des données WebSocket
+	$: globalStats = aggregatedData
+		? (() => {
+				let totalDlSpeed = 0;
+				let totalUlSpeed = 0;
+				let totalActiveTorrents = 0;
+				let totalTorrents = 0;
+				let totalDownloaded = 0;
+				let totalUploaded = 0;
+
+				// Parcourir toutes les instances pour agréger les données
+				Object.values(aggregatedData.instances || {}).forEach((instanceData) => {
+					const serverState = instanceData.server_state as any;
+					const torrents = (instanceData.torrents as Record<string, any>) || {};
+
+					// Ajouter les vitesses de téléchargement et d'upload
+					totalDlSpeed += serverState?.dl_info_speed || 0;
+					totalUlSpeed += serverState?.up_info_speed || 0;
+
+					// Ajouter le nombre de torrents actifs
+					totalActiveTorrents += serverState?.active_torrents || 0;
+
+					// Compter le nombre total de torrents
+					totalTorrents += Object.keys(torrents).length;
+
+					// Ajouter les statistiques globales de téléchargement et d'upload
+					totalDownloaded += serverState?.dl_info_data || 0;
+					totalUploaded += serverState?.up_info_data || 0;
+				});
+
+				// Calculer le ratio
+				const ratio = totalDownloaded > 0 ? totalUploaded / totalDownloaded : 0;
+
+				return {
+					downloadSpeed: formatSpeed(totalDlSpeed),
+					uploadSpeed: formatSpeed(totalUlSpeed),
+					activeTorrents: totalActiveTorrents,
+					totalTorrents: totalTorrents,
+					totalDownloaded: formatSize(totalDownloaded),
+					totalUploaded: formatSize(totalUploaded),
+					ratio: ratio.toFixed(2)
+				};
+			})()
+		: {
+				downloadSpeed: '0 B/s',
+				uploadSpeed: '0 B/s',
+				activeTorrents: 0,
+				totalTorrents: 0,
+				totalDownloaded: '0 B',
+				totalUploaded: '0 B',
+				ratio: '0.00'
+			};
 
 	// --- STATUTS DISPONIBLES ---
 	const allStatuses = [

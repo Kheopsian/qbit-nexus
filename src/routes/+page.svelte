@@ -183,7 +183,7 @@
 		}
 	}
 
-	$: selectedStatuses = [...data.config.settings.visibleStatuses];
+	$: selectedStatuses = [...(data.config.settings.visibleStatuses || [])];
 
 	// --- DONNÉES WEBSOCKET ---
 	$: aggregatedData = $qbitData;

@@ -43,4 +43,4 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 
 # La commande pour démarrer le serveur de production SvelteKit avec Node.js.
-CMD ["node", "index.js"]
+CMD ["bun", "index.js"]

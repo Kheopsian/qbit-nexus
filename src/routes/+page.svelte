@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { qbitData, wsConnectionStatus } from '$lib/websocket-client';
+	import { qbitData, globalStatsData, wsConnectionStatus } from '$lib/websocket-client';
 	import { disconnectWebSocket } from '$lib/websocket-client';
 	import { mapTorrentStatus } from '$lib/torrent-status';
 	import type { QbitMainData } from '$lib/websocket';
@@ -187,6 +187,7 @@
 
 	// --- DONNÉES WEBSOCKET ---
 	$: aggregatedData = $qbitData;
+	$: globalStats = $globalStatsData;
 	$: connectionStatus = $wsConnectionStatus;
 
 	// Extraire les instances des données WebSocket
@@ -381,15 +382,13 @@
 	// --- DONNÉES WEBSOCKET ---
 	// Les instances sont maintenant calculées de manière réactive plus haut
 
-	// Calculer les statistiques globales à partir des données WebSocket
-	$: globalStats = aggregatedData
+	// Calculer les statistiques de session à partir des données WebSocket
+	$: sessionStats = aggregatedData
 		? (() => {
 				let totalDlSpeed = 0;
 				let totalUlSpeed = 0;
 				let totalActiveTorrents = 0;
 				let totalTorrents = 0;
-				let totalDownloaded = 0;
-				let totalUploaded = 0;
 
 				// Parcourir toutes les instances pour agréger les données
 				Object.values(aggregatedData.instances || {}).forEach((instanceData) => {
@@ -405,30 +404,38 @@
 
 					// Compter le nombre total de torrents
 					totalTorrents += Object.keys(torrents).length;
-
-					// Ajouter les statistiques globales de téléchargement et d'upload
-					totalDownloaded += serverState?.dl_info_data || 0;
-					totalUploaded += serverState?.up_info_data || 0;
 				});
-
-				// Calculer le ratio
-				const ratio = totalDownloaded > 0 ? totalUploaded / totalDownloaded : 0;
 
 				return {
 					downloadSpeed: formatSpeed(totalDlSpeed),
 					uploadSpeed: formatSpeed(totalUlSpeed),
 					activeTorrents: totalActiveTorrents,
-					totalTorrents: totalTorrents,
-					totalDownloaded: formatSize(totalDownloaded),
-					totalUploaded: formatSize(totalUploaded),
-					ratio: ratio.toFixed(2)
+					totalTorrents: totalTorrents
 				};
 			})()
 		: {
 				downloadSpeed: '0 B/s',
 				uploadSpeed: '0 B/s',
 				activeTorrents: 0,
-				totalTorrents: 0,
+				totalTorrents: 0
+			};
+
+	// Calculer les statistiques globales à partir des données de configuration
+	$: globalStatsDisplay = globalStats
+		? (() => {
+				const alltimeUL = Number(globalStats.globalStats.alltimeUL);
+				const alltimeDL = Number(globalStats.globalStats.alltimeDL);
+
+				// Calculer le ratio
+				const ratio = alltimeDL > 0 ? alltimeUL / alltimeDL : 0;
+
+				return {
+					totalDownloaded: formatSize(alltimeDL),
+					totalUploaded: formatSize(alltimeUL),
+					ratio: ratio.toFixed(2)
+				};
+			})()
+		: {
 				totalDownloaded: '0 B',
 				totalUploaded: '0 B',
 				ratio: '0.00'
@@ -732,30 +739,30 @@
 	<div class="global-stats-summary">
 		<div class="cumulative-stats">
 			<div class="stat-item">
-				<span class="stat-label">Total DL</span>
-				<span class="stat-value">{globalStats.totalDownloaded}</span>
+				<span class="stat-label">Alltime DL</span>
+				<span class="stat-value">{globalStatsDisplay.totalDownloaded}</span>
 			</div>
 			<div class="stat-item">
-				<span class="stat-label">Total UL</span>
-				<span class="stat-value">{globalStats.totalUploaded}</span>
+				<span class="stat-label">Alltime UL</span>
+				<span class="stat-value">{globalStatsDisplay.totalUploaded}</span>
 			</div>
 			<div class="stat-item">
 				<span class="stat-label">Ratio</span>
-				<span class="stat-value">{globalStats.ratio}</span>
+				<span class="stat-value">{globalStatsDisplay.ratio}</span>
 			</div>
 		</div>
 		<div class="current-stats">
 			<div class="stat-item">
-				<span class="stat-label">Current DL</span>
-				<span class="stat-value">{globalStats.downloadSpeed}</span>
+				<span class="stat-label">Session DL</span>
+				<span class="stat-value">{sessionStats.downloadSpeed}</span>
 			</div>
 			<div class="stat-item">
-				<span class="stat-label">Current UL</span>
-				<span class="stat-value">{globalStats.uploadSpeed}</span>
+				<span class="stat-label">Session UL</span>
+				<span class="stat-value">{sessionStats.uploadSpeed}</span>
 			</div>
 			<div class="stat-item">
 				<span class="stat-label">Active</span>
-				<span class="stat-value">{globalStats.activeTorrents}</span>
+				<span class="stat-value">{sessionStats.activeTorrents}</span>
 			</div>
 		</div>
 	</div>

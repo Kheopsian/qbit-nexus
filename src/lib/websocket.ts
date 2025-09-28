@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
+import { readQbitStats } from './qbit-stats';
 
 interface QbitInstance {
 	id: number;
@@ -7,6 +8,7 @@ interface QbitInstance {
 	url: string;
 	user: string;
 	pass: string;
+	configPath?: string;
 }
 
 export interface QbitMainData {
@@ -20,6 +22,10 @@ export interface QbitMainData {
 interface AggregatedData {
 	instances: Record<number, QbitMainData>;
 	timestamp: number;
+	globalStats?: {
+		alltimeUL: bigint;
+		alltimeDL: bigint;
+	};
 }
 
 export class QbitWebSocketServer {
@@ -31,12 +37,14 @@ export class QbitWebSocketServer {
 	private instanceRids: Record<number, number> = {}; // Suivi des RID pour chaque instance
 	private instanceCookies: Record<number, { cookie: string; expires: number }> = {}; // Stockage des cookies par instance avec leur date d'expiration
 	private instanceFullData: Record<number, QbitMainData> = {}; // Stockage de l'état complet des données par instance
+	private globalStatsIntervalId: NodeJS.Timeout | null = null; // Interval pour les statistiques globales
 
 	constructor(port: number = 8082) {
 		this.wss = new WebSocketServer({ port });
 		this.setupWebSocketServer();
 		this.loadInstances();
 		this.startDataPolling();
+		this.startGlobalStatsPolling();
 	}
 
 	private async loadInstances() {
@@ -271,6 +279,87 @@ export class QbitWebSocketServer {
 		});
 	}
 
+	/**
+	 * Récupère les statistiques globales de toutes les instances qui ont un configPath défini
+	 */
+	private async fetchGlobalStats(): Promise<{ alltimeUL: bigint; alltimeDL: bigint }> {
+		let alltimeUL = 0n;
+		let alltimeDL = 0n;
+
+		// Parcourir toutes les instances qui ont un configPath défini
+		for (const instance of this.instances) {
+			if (instance.configPath) {
+				try {
+					const stats = await readQbitStats(instance.configPath);
+					if (stats) {
+						alltimeUL += stats.AlltimeUL;
+						alltimeDL += stats.AlltimeDL;
+						console.log(
+							`[GlobalStats] Statistiques récupérées pour ${instance.name}: UL=${stats.AlltimeUL}, DL=${stats.AlltimeDL}`
+						);
+					}
+				} catch (error) {
+					console.error(
+						`[GlobalStats] Erreur lors de la lecture des statistiques pour ${instance.name}:`,
+						error
+					);
+				}
+			}
+		}
+
+		return { alltimeUL, alltimeDL };
+	}
+
+	/**
+	 * Met à jour les statistiques globales et les envoie aux clients
+	 */
+	private async updateGlobalStats(): Promise<void> {
+		try {
+			const globalStats = await this.fetchGlobalStats();
+
+			// Créez un objet sérialisable en convertissant les BigInt en string
+			const serializableGlobalStats = {
+				alltimeUL: globalStats.alltimeUL.toString(),
+				alltimeDL: globalStats.alltimeDL.toString()
+			};
+
+			// Utilisez ce nouvel objet pour la sérialisation JSON
+			const message = JSON.stringify({
+				globalStats: serializableGlobalStats,
+				timestamp: Date.now()
+			});
+
+			// Envoyer les statistiques globales à tous les clients connectés
+			this.clients.forEach((client) => {
+				if (client.readyState === WebSocket.OPEN) {
+					client.send(message);
+				}
+			});
+
+			console.log(
+				`[GlobalStats] Statistiques globales mises à jour: UL=${serializableGlobalStats.alltimeUL}, DL=${serializableGlobalStats.alltimeDL}`
+			);
+		} catch (error) {
+			console.error(
+				'[GlobalStats] Erreur lors de la mise à jour des statistiques globales:',
+				error
+			);
+		}
+	}
+
+	/**
+	 * Démarre le polling des statistiques globales toutes les 30 secondes
+	 */
+	private startGlobalStatsPolling(): void {
+		// Exécuter immédiatement la première fois
+		this.updateGlobalStats();
+
+		// Puis toutes les 30 secondes
+		this.globalStatsIntervalId = setInterval(() => {
+			this.updateGlobalStats();
+		}, 30000);
+	}
+
 	private startDataPolling() {
 		// Démarrer immédiatement
 		this.pollAllInstances();
@@ -285,6 +374,11 @@ export class QbitWebSocketServer {
 		if (this.intervalId) {
 			clearInterval(this.intervalId);
 			this.intervalId = null;
+		}
+
+		if (this.globalStatsIntervalId) {
+			clearInterval(this.globalStatsIntervalId);
+			this.globalStatsIntervalId = null;
 		}
 
 		if (this.wss) {

@@ -5,7 +5,8 @@
       "name": "QBit Classic",
       "url": "http://192.168.1.200:8080",
       "user": "Kheopsian917",
-      "pass": "6937iDqdetnA67Vm6dS1ICk0"
+      "pass": "6937iDqdetnA67Vm6dS1ICk0",
+      "configPath": "../data"
     }
   ],
   "settings": {

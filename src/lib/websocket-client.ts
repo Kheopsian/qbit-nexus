@@ -6,7 +6,16 @@ interface AggregatedData {
 	timestamp: number;
 }
 
+interface GlobalStatsData {
+	globalStats: {
+		alltimeUL: bigint;
+		alltimeDL: bigint;
+	};
+	timestamp: number;
+}
+
 export const qbitData = writable<AggregatedData | null>(null);
+export const globalStatsData = writable<GlobalStatsData | null>(null);
 export const wsConnectionStatus = writable<'connecting' | 'connected' | 'disconnected' | 'error'>(
 	'disconnected'
 );
@@ -59,8 +68,16 @@ class WebSocketClient {
 
 			this.ws.onmessage = (event) => {
 				try {
-					const data: AggregatedData = JSON.parse(event.data);
-					qbitData.set(data);
+					const data = JSON.parse(event.data);
+
+					// Vérifier si c'est des données d'instances ou des statistiques globales
+					if (data.instances !== undefined) {
+						// C'est les données des instances
+						qbitData.set(data);
+					} else if (data.globalStats !== undefined) {
+						// C'est les statistiques globales
+						globalStatsData.set(data);
+					}
 				} catch (error) {
 					console.error('[WebSocket Client] Erreur lors du parsing des données WebSocket:', error);
 				}

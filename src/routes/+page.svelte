@@ -14,7 +14,7 @@
 	// Trouver le torrent mis à jour dans allTorrents
 	$: updatedTorrent = allTorrents.find((t) => t.hash === selectedTorrent?.hash) || selectedTorrent;
 	let showStatusSettings = false;
-	let selectedStatuses: string[] = [...data.config.settings.visibleStatuses];
+	let selectedStatuses: string[] = [...(data.config.settings.visibleStatuses || [])];
 	let visibleStatuses: string[];
 	let settingsForm: HTMLFormElement;
 	let pollingInterval: any = null;

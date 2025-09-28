@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 import { readQbitStats } from './qbit-stats';
+import type { Server } from 'http';
 
 interface QbitInstance {
 	id: number;
@@ -28,6 +29,12 @@ interface AggregatedData {
 	};
 }
 
+interface QbitWebSocketServerOptions {
+	port?: number;
+	server?: Server;
+	path?: string;
+}
+
 export class QbitWebSocketServer {
 	private wss: WebSocketServer | null = null;
 	private clients = new Set<WebSocket>();
@@ -39,8 +46,17 @@ export class QbitWebSocketServer {
 	private instanceFullData: Record<number, QbitMainData> = {}; // Stockage de l'état complet des données par instance
 	private globalStatsIntervalId: NodeJS.Timeout | null = null; // Interval pour les statistiques globales
 
-	constructor(port: number = 8082) {
-		this.wss = new WebSocketServer({ port });
+	constructor(options: QbitWebSocketServerOptions) {
+		if (options.server) {
+			// Attach to an existing HTTP server
+			this.wss = new WebSocketServer({ server: options.server, path: options.path });
+		} else if (options.port) {
+			// Create a new server on a specific port
+			this.wss = new WebSocketServer({ port: options.port });
+		} else {
+			throw new Error("WebSocketServer requires either a 'port' or a 'server' option.");
+		}
+
 		this.setupWebSocketServer();
 		this.loadInstances();
 		this.startDataPolling();

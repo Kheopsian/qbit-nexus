@@ -2,11 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
-	// Retourner l'URL du serveur WebSocket
-	const wsUrl = `ws://localhost:8082`;
+	// On retourne un chemin relatif, sans domaine ni port
+	const wsPath = `/qbit-ws`;
 
 	return json({
-		websocketUrl: wsUrl,
-		message: 'Connectez-vous à cette URL pour recevoir les données qBittorrent'
+		websocketPath: wsPath,
+		message: 'Utilisez ce chemin pour la connexion WebSocket'
 	});
 };

@@ -24,29 +24,41 @@ class WebSocketClient {
 	private ws: WebSocket | null = null;
 	private reconnectAttempts = 0;
 	private maxReconnectAttempts = 5;
-	private reconnectInterval = 3000; // 3 secondes
+	private reconnectInterval = 3000;
 	private reconnectTimeout: NodeJS.Timeout | null = null;
 	private wsUrl = '';
 
 	constructor() {
-		this.initializeWebSocket();
+		// On ne se connecte que côté client (navigateur)
+		if (typeof window !== 'undefined') {
+			this.initializeWebSocket();
+		}
+	}
+
+	private getWebSocketUrl(path: string): string {
+		const loc = window.location;
+		const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+		const host = loc.host;
+		return `${protocol}//${host}${path}`;
 	}
 
 	private async initializeWebSocket() {
 		try {
-			// Récupérer l'URL du WebSocket depuis l'API
 			const response = await fetch('/api/websocket');
-
 			if (!response.ok) {
-				const errorText = await response.text();
-				throw new Error(`Erreur ${response.status}: ${errorText}`);
+				throw new Error(`Erreur API: ${response.status}`);
 			}
-
 			const data = await response.json();
-			this.wsUrl = data.websocketUrl;
+
+			// On construit l'URL complète à partir du chemin reçu
+			this.wsUrl = this.getWebSocketUrl(data.websocketPath);
+			console.log(`[WebSocket Client] Connecting to: ${this.wsUrl}`);
 			this.connect();
 		} catch (error) {
-			console.error("[WebSocket Client] Erreur lors de la récupération de l'URL WebSocket:", error);
+			console.error(
+				'[WebSocket Client] Erreur lors de la récupération du chemin WebSocket:',
+				error
+			);
 			wsConnectionStatus.set('error');
 		}
 	}

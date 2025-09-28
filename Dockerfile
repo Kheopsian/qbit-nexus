@@ -4,7 +4,7 @@ FROM oven/bun:1.1-alpine AS install
 WORKDIR /app
 
 # On copie uniquement les fichiers nécessaires à l'installation.
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 
 # On installe les dépendances. --frozen-lockfile est l'équivalent de `npm ci`
 # pour garantir des builds reproductibles.

@@ -11,6 +11,7 @@
 	let editUrl = '';
 	let editUser = '';
 	let editPass = '';
+	let editConfigPath = '';
 
 	// S'assurer que la page settings utilise le padding standard
 	onMount(() => {
@@ -27,6 +28,7 @@
 		editUrl = instance.url;
 		editUser = instance.user;
 		editPass = instance.pass;
+		editConfigPath = instance.configPath || '';
 	}
 
 	// Fonction pour annuler l'édition
@@ -36,6 +38,7 @@
 		editUrl = '';
 		editUser = '';
 		editPass = '';
+		editConfigPath = '';
 	}
 </script>
 
@@ -52,6 +55,7 @@
 			<input name="url" type="url" placeholder="URL (http://...)" required />
 			<input name="user" type="text" placeholder="Username" required />
 			<input name="pass" type="password" placeholder="Password" required />
+			<input name="configPath" type="text" placeholder="Config Path (optional)" />
 			<button type="submit">Add Instance</button>
 		</form>
 	</div>
@@ -94,6 +98,12 @@
 										bind:value={editPass}
 										placeholder="Password"
 										required
+									/>
+									<input
+										type="text"
+										name="configPath"
+										bind:value={editConfigPath}
+										placeholder="Config Path (optional)"
 									/>
 								</div>
 								<div class="edit-actions">

@@ -12,6 +12,7 @@ interface Instance {
 	url: string;
 	user: string;
 	pass: string;
+	configPath?: string;
 }
 
 // Définir un type pour les settings
@@ -48,10 +49,11 @@ export const actions: Actions = {
 	// Action pour ajouter une nouvelle instance
 	add: async ({ request }) => {
 		const data = await request.formData();
-		const name = data.get('name');
-		const url = data.get('url');
-		const user = data.get('user');
-		const pass = data.get('pass');
+		const name = data.get('name') as string;
+		const url = data.get('url') as string;
+		const user = data.get('user') as string;
+		const pass = data.get('pass') as string;
+		const configPath = data.get('configPath') as string;
 
 		if (!name || !url || !user || !pass) {
 			return fail(400, { success: false, message: 'All fields are required.' });
@@ -62,7 +64,12 @@ export const actions: Actions = {
 		const config = JSON.parse(fileContent);
 		const instances = config.instances || [];
 
-		const newInstance = { id: Date.now(), name, url, user, pass };
+		const newInstance: Instance = { id: Date.now(), name, url, user, pass };
+
+		// Ajouter configPath seulement s'il est fourni
+		if (configPath) {
+			newInstance.configPath = configPath;
+		}
 
 		// 2. Ajouter la nouvelle instance
 		instances.push(newInstance);
@@ -94,6 +101,7 @@ export const actions: Actions = {
 		const url = data.get('url');
 		const user = data.get('user');
 		const pass = data.get('pass');
+		const configPath = data.get('configPath');
 
 		if (!id || !name || !url || !user || !pass) {
 			return fail(400, { success: false, message: 'All fields are required.' });
@@ -114,13 +122,20 @@ export const actions: Actions = {
 		}
 
 		// 3. Mettre à jour l'instance
-		instances[instanceIndex] = {
+		const updatedInstance: Instance = {
 			id: parseInt(id as string),
 			name: name as string,
 			url: url as string,
 			user: user as string,
 			pass: pass as string
 		};
+
+		// Ajouter configPath seulement s'il est fourni
+		if (configPath) {
+			updatedInstance.configPath = configPath as string;
+		}
+
+		instances[instanceIndex] = updatedInstance;
 
 		// 4. Préparer les données de configuration mises à jour
 		const updatedConfig = {

@@ -3,7 +3,7 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
 	// Retourner l'URL du serveur WebSocket
-	const wsUrl = `ws://localhost:8081`;
+	const wsUrl = `ws://localhost:8082`;
 
 	return json({
 		websocketUrl: wsUrl,

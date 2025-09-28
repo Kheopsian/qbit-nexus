@@ -5,7 +5,7 @@ let wsServer: QbitWebSocketServer | null = null;
 export async function handle({ event, resolve }) {
 	// Démarrer le serveur WebSocket si pas déjà démarré
 	if (!wsServer) {
-		wsServer = new QbitWebSocketServer(8081);
+		wsServer = new QbitWebSocketServer(8082);
 		console.log('Serveur WebSocket qBittorrent démarré');
 	}
 

@@ -32,7 +32,7 @@ export class QbitWebSocketServer {
 	private instanceCookies: Record<number, { cookie: string; expires: number }> = {}; // Stockage des cookies par instance avec leur date d'expiration
 	private instanceFullData: Record<number, QbitMainData> = {}; // Stockage de l'état complet des données par instance
 
-	constructor(port: number = 8081) {
+	constructor(port: number = 8082) {
 		this.wss = new WebSocketServer({ port });
 		this.setupWebSocketServer();
 		this.loadInstances();
@@ -107,79 +107,50 @@ export class QbitWebSocketServer {
 		return cookies;
 	}
 
-	private mergeData(currentData: QbitMainData, newData: QbitMainData): QbitMainData {
-		// Commencer avec une copie complète des données actuelles
-		const mergedData: QbitMainData = JSON.parse(JSON.stringify(currentData));
-
+	private mergeData(currentData: QbitMainData, newData: QbitMainData): void {
 		// Fusionner les torrents
 		if (newData.torrents) {
-			// S'assurer que nous avons un objet torrents
-			if (!mergedData.torrents) {
-				mergedData.torrents = {};
+			if (!currentData.torrents) {
+				currentData.torrents = {};
 			}
-
-			// Parcourir les torrents dans newData pour les mises à jour et suppressions
 			Object.entries(newData.torrents).forEach(([hash, torrentData]) => {
 				if (torrentData === null) {
-					// Supprimer le torrent
-					delete mergedData.torrents![hash];
+					delete currentData.torrents![hash];
 				} else {
-					// Mettre à jour ou ajouter le torrent
-					// Si le torrent existe déjà, fusionner ses propriétés pour préserver les données non modifiées
-					if (mergedData.torrents![hash]) {
-						// Fusionner les propriétés du torrent existant avec les nouvelles données
-						mergedData.torrents![hash] = {
-							...(mergedData.torrents![hash] as Record<string, unknown>),
-							...(torrentData as Record<string, unknown>)
-						};
-					} else {
-						// Nouveau torrent
-						mergedData.torrents![hash] = torrentData;
-					}
+					currentData.torrents![hash] = {
+						...((currentData.torrents![hash] as Record<string, unknown>) || {}),
+						...(torrentData as Record<string, unknown>)
+					};
 				}
 			});
 		}
 
-		// Remplacer server_state (représente l'état global actuel)
+		// Remplacer server_state
 		if (newData.server_state !== undefined) {
-			mergedData.server_state = newData.server_state;
+			currentData.server_state = newData.server_state;
 		}
 
 		// Fusionner les catégories
 		if (newData.categories) {
-			// S'assurer que nous avons un objet categories
-			if (!mergedData.categories) {
-				mergedData.categories = {};
+			if (!currentData.categories) {
+				currentData.categories = {};
 			}
-
-			// Parcourir les catégories dans newData pour les mises à jour et suppressions
 			Object.entries(newData.categories).forEach(([name, categoryData]) => {
 				if (categoryData === null) {
-					// Supprimer la catégorie
-					delete mergedData.categories![name];
+					delete currentData.categories![name];
 				} else {
-					// Mettre à jour ou ajouter la catégorie
-					// Si la catégorie existe déjà, fusionner ses propriétés pour préserver les données non modifiées
-					if (mergedData.categories![name]) {
-						// Fusionner les propriétés de la catégorie existante avec les nouvelles données
-						mergedData.categories![name] = {
-							...(mergedData.categories![name] as Record<string, unknown>),
-							...(categoryData as Record<string, unknown>)
-						};
-					} else {
-						// Nouvelle catégorie
-						mergedData.categories![name] = categoryData;
-					}
+					currentData.categories![name] = {
+						...((currentData.categories![name] as Record<string, unknown>) || {}),
+						...(categoryData as Record<string, unknown>)
+					};
 				}
 			});
 		}
 
-		// Remplacer les tags (représente la liste complète actuelle)
+		// Remplacer les tags
 		if (newData.tags !== undefined) {
-			mergedData.tags = newData.tags;
+			currentData.tags = newData.tags;
 		}
-
-		return mergedData;
 	}
 
 	private async fetchInstanceData(instance: QbitInstance): Promise<QbitMainData> {
@@ -232,12 +203,16 @@ export class QbitWebSocketServer {
 					this.instanceRids[instance.id] = data.rid;
 				}
 
-				// Fusionner les données avec l'état complet existant
-				const currentFullData = this.instanceFullData[instance.id] || {};
-				const mergedData = this.mergeData(currentFullData, data);
-				this.instanceFullData[instance.id] = mergedData;
+				// S'assurer que l'objet existe avant de le modifier
+				if (!this.instanceFullData[instance.id]) {
+					this.instanceFullData[instance.id] = {};
+				}
 
-				return mergedData;
+				// Fusionner les données directement dans l'état complet existant
+				this.mergeData(this.instanceFullData[instance.id], data);
+
+				// Retourner l'objet mis à jour
+				return this.instanceFullData[instance.id];
 			}
 
 			if (!mainDataResponse.ok) {
@@ -258,9 +233,8 @@ export class QbitWebSocketServer {
 			if (currentRid === 0 || !this.instanceFullData[instance.id]) {
 				this.instanceFullData[instance.id] = data;
 			} else {
-				// Sinon, fusionner les données différentielles avec l'état complet existant
-				const mergedData = this.mergeData(this.instanceFullData[instance.id], data);
-				this.instanceFullData[instance.id] = mergedData;
+				// Fusionner les données différentielles avec l'état complet existant
+				this.mergeData(this.instanceFullData[instance.id], data); // Plus de réassignation
 			}
 
 			// Retourner l'état complet

@@ -11,14 +11,38 @@
 	export let data: PageData;
 
 	let selectedTorrent: any = null;
+	// Trouver le torrent mis à jour dans allTorrents
+	$: updatedTorrent = allTorrents.find((t) => t.hash === selectedTorrent?.hash) || selectedTorrent;
 	let showStatusSettings = false;
 	let selectedStatuses: string[] = [...data.config.settings.visibleStatuses];
 	let visibleStatuses: string[];
 	let settingsForm: HTMLFormElement;
+	let pollingInterval: any = null;
 
 	// --- GESTION DES TABS DANS LA POPUP ---
 	let activeTab = 'general';
-	let torrentDetails: any = null;
+	interface Peer {
+		client?: string;
+		ip?: string;
+		port?: number;
+		progress: number;
+		dl_speed: number;
+		up_speed: number;
+		flags?: string;
+		reqs?: string;
+		downloaded: number;
+		uploaded: number;
+	}
+
+	interface TorrentDetails {
+		trackers?: any[];
+		peers?: {
+			full_update: boolean;
+			peers: Record<string, Peer>;
+		};
+	}
+
+	let torrentDetails: TorrentDetails | null = null;
 
 	// --- GESTION DU SCROLL ---
 	let showStickyHeader = false;
@@ -65,11 +89,32 @@
 		});
 	}
 
+	// Fonction pour démarrer le polling
+	function startPolling(torrent: any) {
+		// Arrêter tout polling existant
+		if (pollingInterval) {
+			clearInterval(pollingInterval);
+		}
+		// Démarrer un nouveau polling toutes les 5 secondes
+		pollingInterval = setInterval(() => {
+			fetchTorrentDetails(torrent);
+		}, 5000);
+	}
+
+	// Fonction pour arrêter le polling
+	function stopPolling() {
+		if (pollingInterval) {
+			clearInterval(pollingInterval);
+			pollingInterval = null;
+		}
+	}
+
 	// Fonction pour sélectionner un torrent et réinitialiser l'onglet
 	function selectTorrent(torrent: any) {
 		selectedTorrent = torrent;
 		activeTab = 'general';
 		fetchTorrentDetails(torrent);
+		startPolling(torrent);
 	}
 
 	// Fonction pour afficher/masquer les filtres
@@ -130,7 +175,8 @@
 				);
 			}
 			const data = await response.json();
-			torrentDetails = data;
+			// Forcer la mise à jour de torrentDetails en créant un nouvel objet
+			torrentDetails = JSON.parse(JSON.stringify(data));
 		} catch (error) {
 			console.error('Erreur lors de la récupération des détails du torrent:', error);
 			torrentDetails = null;
@@ -991,7 +1037,13 @@
 	<div class="info-panel">
 		<div class="panel-header">
 			<h3>{selectedTorrent.name}</h3>
-			<button class="close-btn" on:click={() => (selectedTorrent = null)}>×</button>
+			<button
+				class="close-btn"
+				on:click={() => {
+					selectedTorrent = null;
+					stopPolling();
+				}}>×</button
+			>
 		</div>
 		<div class="panel-content">
 			<div class="tabs">
@@ -1025,41 +1077,41 @@
 					<div class="general-info-grid">
 						<div class="info-row">
 							<span class="info-label">Status:</span>
-							<span class="info-value">{selectedTorrent.status}</span>
+							<span class="info-value">{updatedTorrent.status}</span>
 						</div>
 						<div class="info-row">
 							<span class="info-label">Instance:</span>
-							<span class="info-value">{selectedTorrent.instance}</span>
+							<span class="info-value">{updatedTorrent.instance}</span>
 						</div>
 						<div class="info-row">
 							<span class="info-label">Size:</span>
-							<span class="info-value">{selectedTorrent.size}</span>
+							<span class="info-value">{updatedTorrent.size}</span>
 						</div>
 						<div class="info-row">
 							<span class="info-label">Progress:</span>
-							<span class="info-value">{selectedTorrent.progress.toFixed(1)}%</span>
+							<span class="info-value">{updatedTorrent.progress.toFixed(1)}%</span>
 						</div>
 						<div class="info-row">
 							<span class="info-label">Download Speed:</span>
-							<span class="info-value">{selectedTorrent.dl_speed}</span>
+							<span class="info-value">{updatedTorrent.dl_speed}</span>
 						</div>
 						<div class="info-row">
 							<span class="info-label">Upload Speed:</span>
-							<span class="info-value">{selectedTorrent.ul_speed}</span>
+							<span class="info-value">{updatedTorrent.ul_speed}</span>
 						</div>
-						{#if selectedTorrent.category}
+						{#if updatedTorrent.category}
 							<div class="info-row">
 								<span class="info-label">Category:</span>
-								<span class="info-value">{selectedTorrent.category}</span>
+								<span class="info-value">{updatedTorrent.category}</span>
 							</div>
 						{/if}
-						{#if selectedTorrent.tags && selectedTorrent.tags.length > 0}
+						{#if updatedTorrent.tags && updatedTorrent.tags.length > 0}
 							<div class="info-row">
 								<span class="info-label">Tags:</span>
 								<span class="info-value"
-									>{Array.isArray(selectedTorrent.tags)
-										? selectedTorrent.tags.join(', ')
-										: selectedTorrent.tags}</span
+									>{Array.isArray(updatedTorrent.tags)
+										? updatedTorrent.tags.join(', ')
+										: updatedTorrent.tags}</span
 								>
 							</div>
 						{/if}
@@ -1101,10 +1153,47 @@
 						</div>
 					{/if}
 				{:else if activeTab === 'peers'}
-					<div class="empty-state">
-						<i class="fas fa-exclamation-circle"></i>
-						<p>Peer information not available</p>
-					</div>
+					{#if torrentDetails && torrentDetails.peers && torrentDetails.peers.full_update}
+						<div class="peer-info">
+							<table class="peer-table">
+								<thead>
+									<tr>
+										<th>IP</th>
+										<th>Port</th>
+										<th>Client</th>
+										<th>Progress</th>
+										<th>DL Speed</th>
+										<th>UL Speed</th>
+										<th>Flags</th>
+										<th>Reqs</th>
+										<th>Downloaded</th>
+										<th>Uploaded</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each Object.entries(torrentDetails.peers?.peers || {}) as [ipPort, peer]}
+										<tr>
+											<td>{peer.ip || ipPort.split(':')[0]}</td>
+											<td>{peer.port || ipPort.split(':')[1]}</td>
+											<td>{peer.client || 'N/A'}</td>
+											<td>{(peer.progress * 100).toFixed(1)}%</td>
+											<td class="mono">{formatSpeed(peer.dl_speed)}</td>
+											<td class="mono">{formatSpeed(peer.up_speed)}</td>
+											<td>{peer.flags || ''}</td>
+											<td>{peer.reqs || ''}</td>
+											<td class="mono">{formatSize(peer.downloaded)}</td>
+											<td class="mono">{formatSize(peer.uploaded)}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{:else}
+						<div class="empty-state">
+							<i class="fas fa-spinner fa-spin"></i>
+							<p>Chargement des informations des peers...</p>
+						</div>
+					{/if}
 				{:else if activeTab === 'files'}
 					<div class="empty-state">
 						<i class="fas fa-exclamation-circle"></i>
@@ -1533,6 +1622,7 @@
 	.info-panel {
 		background-color: var(--card-background-color);
 		border-top: 2px solid var(--border-color);
+		height: 33.33vh; /* 1/3 de la hauteur de l'écran */
 		min-height: 300px;
 		max-height: 80vh;
 		display: flex;

@@ -51,20 +51,34 @@ export const GET: RequestHandler = async ({ url }) => {
 			return json({ error: "Pas de cookies d'authentification" }, { status: 401 });
 		}
 
-		// Récupérer les détails du torrent
-		const detailsUrl = `${instance.url}/api/v2/torrents/trackers?hash=${hash}`;
-		const detailsResponse = await fetch(detailsUrl, {
+		// Récupérer les détails du torrent (trackers)
+		const trackersUrl = `${instance.url}/api/v2/torrents/trackers?hash=${hash}`;
+		const trackersResponse = await fetch(trackersUrl, {
 			headers: {
 				Cookie: cookies
 			}
 		});
 
-		if (!detailsResponse.ok) {
-			return json({ error: 'Échec de la récupération des détails du torrent' }, { status: 500 });
+		if (!trackersResponse.ok) {
+			return json({ error: 'Échec de la récupération des trackers du torrent' }, { status: 500 });
 		}
 
-		const trackers = await detailsResponse.json();
-		return json({ trackers });
+		const trackers = await trackersResponse.json();
+
+		// Récupérer les peers du torrent
+		const peersUrl = `${instance.url}/api/v2/sync/torrentPeers?hash=${hash}`;
+		const peersResponse = await fetch(peersUrl, {
+			headers: {
+				Cookie: cookies
+			}
+		});
+
+		if (!peersResponse.ok) {
+			return json({ error: 'Échec de la récupération des peers du torrent' }, { status: 500 });
+		}
+
+		const peers = await peersResponse.json();
+		return json({ trackers, peers });
 	} catch (error) {
 		console.error('Erreur lors de la récupération des détails du torrent:', error);
 		return json({ error: 'Erreur serveur interne' }, { status: 500 });

@@ -1,13 +1,11 @@
 # --- STAGE 1: Installation des dépendances ---
-# On utilise l'image officielle de Bun, légère et optimisée.
 FROM oven/bun:alpine AS install
 WORKDIR /app
 
 # On copie uniquement les fichiers nécessaires à l'installation.
 COPY package.json bun.lock ./
 
-# On installe les dépendances. --frozen-lockfile est l'équivalent de `npm ci`
-# pour garantir des builds reproductibles.
+# On installe les dépendances.
 RUN bun install --frozen-lockfile --verbose
 
 # --- STAGE 2: Build de l'application ---
@@ -18,27 +16,25 @@ WORKDIR /app
 COPY --from=install /app/node_modules ./node_modules
 COPY . .
 
-# On lance le build SvelteKit avec Bun.
+# On lance le build SvelteKit.
 RUN bun run build
 
-# --- STAGE 3: Image de production (Corrected) ---
+# --- STAGE 3: Image de production ---
 FROM oven/bun:alpine AS production
 WORKDIR /app
 
-# Set the NODE_ENV to production
 ENV NODE_ENV=production
 
-# Copy the built app from the build stage
+# On copie l'application buildée depuis l'étape précédente.
 COPY --from=build /app/build .
-# Copy production dependencies and package files
+# On copie les dépendances de production.
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/bun.lock ./bun.lock
 
-# Expose port and set env vars
+
+# On expose le port sur lequel l'application tournera.
 EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Start the app using Node.js
+# La commande pour démarrer le serveur de production.
 CMD ["node", "index.js"]

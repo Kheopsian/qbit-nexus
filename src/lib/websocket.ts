@@ -47,14 +47,12 @@ export class QbitWebSocketServer {
 	private globalStatsIntervalId: NodeJS.Timeout | null = null; // Interval pour les statistiques globales
 
 	constructor(options: QbitWebSocketServerOptions) {
-		if (options.server) {
-			// Attach to an existing HTTP server
-			this.wss = new WebSocketServer({ server: options.server, path: options.path });
-		} else if (options.port) {
-			// Create a new server on a specific port
-			this.wss = new WebSocketServer({ port: options.port });
+		// Au lieu d'un serveur complet, nous créons un serveur SANS serveur physique.
+		// Il servira uniquement à gérer les clients.
+		if (options.path) {
+			this.wss = new WebSocketServer({ noServer: true, path: options.path });
 		} else {
-			throw new Error("WebSocketServer requires either a 'port' or a 'server' option.");
+			throw new Error("WebSocketServer requires a 'path' option when running with 'noServer'.");
 		}
 
 		this.setupWebSocketServer();

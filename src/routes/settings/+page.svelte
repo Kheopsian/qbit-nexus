@@ -50,7 +50,7 @@
 <section class="metrics-grid">
 	<div class="metric-card">
 		<div class="metric-label">Add New Instance</div>
-		<form method="POST">
+		<form method="POST" action="?/add">
 			<input name="name" type="text" placeholder="Instance Name" required />
 			<input name="url" type="url" placeholder="URL (http://...)" required />
 			<input name="user" type="text" placeholder="Username" required />

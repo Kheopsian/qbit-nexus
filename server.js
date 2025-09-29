@@ -417,26 +417,74 @@ export class QbitWebSocketServer {
 	async fetchGlobalStats() {
 		let alltimeUL = 0n,
 			alltimeDL = 0n;
+
+		console.log(`[DEBUG-STATS] === DÉBUT DIAGNOSTIC fetchGlobalStats ===`);
+		console.log(`[DEBUG-STATS] Nombre d'instances configurées: ${this.instances.length}`);
+
 		for (const instance of this.instances) {
+			console.log(`[DEBUG-STATS] Traitement instance: ${instance.name}`);
+			console.log(`[DEBUG-STATS] - ID: ${instance.id}`);
+			console.log(`[DEBUG-STATS] - configPath: ${instance.configPath || 'NON DÉFINI'}`);
+
 			if (instance.configPath) {
 				try {
-					// --- LA CORRECTION EST ICI ---
 					const fullPath = path.join(instance.configPath, 'qBittorrent-data.conf');
+					console.log(`[DEBUG-STATS] - Chemin complet: ${fullPath}`);
+
+					// Vérifier l'existence du fichier
+					try {
+						await fs.access(fullPath);
+						console.log(`[DEBUG-STATS] - ✅ Fichier accessible`);
+					} catch (accessError) {
+						console.log(`[DEBUG-STATS] - ❌ Fichier NON accessible:`, accessError.message);
+						continue;
+					}
+
 					const fileContent = await fs.readFile(fullPath, 'utf-8');
-					const match = fileContent.match(/AllStats=@Variant\((.*)\)/s);
+					console.log(`[DEBUG-STATS] - Taille du fichier: ${fileContent.length} caractères`);
+
+					// Chercher la section AllStats (avec ou sans guillemets)
+					const match = fileContent.match(/AllStats=["']?@Variant\((.*)\)["']?/s);
+					console.log(`[DEBUG-STATS] - Regex AllStats trouvé: ${!!match}`);
+
 					if (match && match[1]) {
+						console.log(`[DEBUG-STATS] - Longueur données échappées: ${match[1].length}`);
 						const binaryData = qbitStringToBuffer(match[1]);
+						console.log(`[DEBUG-STATS] - Taille buffer binaire: ${binaryData.length} bytes`);
+
 						const stats = decodeQbitStats(binaryData);
+						console.log(`[DEBUG-STATS] - Décodage réussi: ${!!stats}`);
+
 						if (stats) {
+							console.log(`[DEBUG-STATS] - AlltimeUL: ${stats.AlltimeUL.toString()}`);
+							console.log(`[DEBUG-STATS] - AlltimeDL: ${stats.AlltimeDL.toString()}`);
 							alltimeUL += stats.AlltimeUL;
 							alltimeDL += stats.AlltimeDL;
+						} else {
+							console.log(`[DEBUG-STATS] - ❌ Décodage retourné null`);
 						}
+					} else {
+						console.log(`[DEBUG-STATS] - ❌ Regex AllStats ne match pas`);
+						// Afficher un extrait du fichier pour diagnostic
+						const preview = fileContent.substring(0, 500);
+						console.log(`[DEBUG-STATS] - Extrait du fichier (500 premiers chars):`, preview);
 					}
 				} catch (error) {
-					console.error(`Erreur de lecture des stats pour l'instance ${instance.name}:`, error);
+					console.error(
+						`[DEBUG-STATS] Erreur de lecture des stats pour l'instance ${instance.name}:`,
+						error
+					);
 				}
+			} else {
+				console.log(`[DEBUG-STATS] - ⚠️  Instance sans configPath défini`);
 			}
 		}
+
+		console.log(`[DEBUG-STATS] === RÉSULTATS FINAUX ===`);
+		console.log(`[DEBUG-STATS] Total UL: ${alltimeUL.toString()}`);
+		console.log(`[DEBUG-STATS] Total DL: ${alltimeDL.toString()}`);
+		console.log(`[DEBUG-STATS] === FIN DIAGNOSTIC ===`);
+
 		return { alltimeUL, alltimeDL };
 	}
 

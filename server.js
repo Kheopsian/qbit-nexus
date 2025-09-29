@@ -3,6 +3,7 @@ import http from 'http';
 import { handler } from './build/handler.js'; // Le handler SvelteKit
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
+import path from 'path';
 
 function decodeQbitStats(configString) {
 	const match = configString.match(/@Variant\((.*)\)/s);

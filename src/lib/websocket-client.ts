@@ -31,7 +31,11 @@ class WebSocketClient {
 	constructor() {
 		// On ne se connecte que côté client (navigateur)
 		if (typeof window !== 'undefined') {
-			this.initializeWebSocket();
+			// On supprime l'appel fetch à /api/websocket
+			// et on utilise directement le chemin connu.
+			this.wsUrl = this.getWebSocketUrl('/qbit-ws');
+			console.log(`[DEBUG Client] URL WebSocket construite: ${this.wsUrl}`);
+			this.connect();
 		}
 	}
 
@@ -40,28 +44,6 @@ class WebSocketClient {
 		const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
 		const host = loc.host;
 		return `${protocol}//${host}${path}`;
-	}
-
-	private async initializeWebSocket() {
-		try {
-			console.log('[DEBUG Client] Initialisation WebSocket - Récupération du chemin...');
-			const response = await fetch('/api/websocket');
-			console.log('[DEBUG Client] Réponse de /api/websocket:', response.status, response.ok);
-
-			if (!response.ok) {
-				throw new Error(`Erreur API: ${response.status}`);
-			}
-			const data = await response.json();
-			console.log('[DEBUG Client] Données reçues:', data);
-
-			// On construit l'URL complète à partir du chemin reçu
-			this.wsUrl = this.getWebSocketUrl(data.websocketPath);
-			console.log(`[DEBUG Client] URL WebSocket construite: ${this.wsUrl}`);
-			this.connect();
-		} catch (error) {
-			console.error('[DEBUG Client] Erreur lors de la récupération du chemin WebSocket:', error);
-			wsConnectionStatus.set('error');
-		}
 	}
 
 	private connect() {

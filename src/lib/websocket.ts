@@ -47,10 +47,13 @@ export class QbitWebSocketServer {
 	private globalStatsIntervalId: NodeJS.Timeout | null = null; // Interval pour les statistiques globales
 
 	constructor(options: QbitWebSocketServerOptions) {
+		console.log('[DEBUG] QbitWebSocketServer constructor appelé avec options:', options);
 		// Au lieu d'un serveur complet, nous créons un serveur SANS serveur physique.
 		// Il servira uniquement à gérer les clients.
 		if (options.path) {
+			console.log('[DEBUG] Création du WebSocketServer avec noServer: true');
 			this.wss = new WebSocketServer({ noServer: true, path: options.path });
+			console.log('[DEBUG] WebSocketServer créé:', !!this.wss);
 		} else {
 			throw new Error("WebSocketServer requires a 'path' option when running with 'noServer'.");
 		}
@@ -59,6 +62,57 @@ export class QbitWebSocketServer {
 		this.loadInstances();
 		this.startDataPolling();
 		this.startGlobalStatsPolling();
+	}
+
+	/**
+	 * Méthode publique pour gérer les upgrades WebSocket
+	 */
+	public handleUpgrade(
+		request: any,
+		socket: any,
+		head: any,
+		callback: (ws: WebSocket) => void
+	): void {
+		console.log('[DEBUG] handleUpgrade appelé');
+		if (!this.wss) {
+			console.error('[DEBUG] Erreur: wss est null dans handleUpgrade');
+			return;
+		}
+
+		try {
+			console.log('[DEBUG] Tentative de handleUpgrade avec wss');
+			this.wss.handleUpgrade(request, socket, head, (ws) => {
+				console.log('[DEBUG] WebSocket upgrade réussi');
+				callback(ws);
+			});
+		} catch (error) {
+			console.error('[DEBUG] Erreur dans handleUpgrade:', error);
+		}
+	}
+
+	/**
+	 * Méthode publique pour émettre des événements de connexion
+	 */
+	public emitConnection(ws: WebSocket, request: any): void {
+		console.log('[DEBUG] emitConnection appelé');
+		if (!this.wss) {
+			console.error('[DEBUG] Erreur: wss est null dans emitConnection');
+			return;
+		}
+
+		try {
+			console.log("[DEBUG] Émission de l'événement connection");
+			this.wss.emit('connection', ws, request);
+		} catch (error) {
+			console.error('[DEBUG] Erreur dans emitConnection:', error);
+		}
+	}
+
+	/**
+	 * Getter pour vérifier si le serveur WebSocket est disponible
+	 */
+	public get isReady(): boolean {
+		return this.wss !== null;
 	}
 
 	private async loadInstances() {
@@ -107,7 +161,9 @@ export class QbitWebSocketServer {
 			body: new URLSearchParams({
 				username: instance.user,
 				password: instance.pass
-			})
+			}),
+			// Ajouter timeout pour l'authentification
+			signal: AbortSignal.timeout(5000) // Timeout de 5 secondes
 		});
 
 		if (!authResponse.ok) {
@@ -194,7 +250,9 @@ export class QbitWebSocketServer {
 			const mainDataResponse = await fetch(mainDataUrl, {
 				headers: {
 					Cookie: cookies
-				}
+				},
+				// Ajouter timeout et options pour améliorer la stabilité
+				signal: AbortSignal.timeout(3000) // Timeout de 3 secondes
 			});
 
 			// Si la réponse est 403 (Forbidden), les cookies ont probablement expiré
@@ -209,7 +267,8 @@ export class QbitWebSocketServer {
 				const retryResponse = await fetch(mainDataUrl, {
 					headers: {
 						Cookie: cookies
-					}
+					},
+					signal: AbortSignal.timeout(3000) // Timeout de 3 secondes pour le retry
 				});
 
 				if (!retryResponse.ok) {
@@ -262,7 +321,18 @@ export class QbitWebSocketServer {
 			// Retourner l'état complet
 			return this.instanceFullData[instance.id];
 		} catch (error) {
-			console.error(`[WebSocket] Erreur pour l'instance ${instance.name}:`, error);
+			// Gestion d'erreur améliorée avec moins de logs pour les erreurs temporaires
+			if (error instanceof Error) {
+				if (error.name === 'AbortError') {
+					console.warn(`[WebSocket] Timeout pour l'instance ${instance.name}`);
+				} else if (error.message.includes('ECONNRESET') || error.message.includes('fetch failed')) {
+					console.warn(`[WebSocket] Connexion instable pour ${instance.name} (${error.message})`);
+				} else {
+					console.error(`[WebSocket] Erreur pour l'instance ${instance.name}:`, error.message);
+				}
+			} else {
+				console.error(`[WebSocket] Erreur inconnue pour l'instance ${instance.name}:`, error);
+			}
 			return {};
 		}
 	}

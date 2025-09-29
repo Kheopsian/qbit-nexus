@@ -2,7 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
-	// On retourne un chemin relatif, sans domaine ni port
+	console.log('[DEBUG API] Requête pour obtenir le chemin WebSocket');
+
+	// Retourner le chemin WebSocket (géré maintenant par Vite en dev et hooks.server.ts en prod)
 	const wsPath = `/qbit-ws`;
 
 	return json({

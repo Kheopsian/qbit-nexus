@@ -1,31 +1,31 @@
 # --- STAGE 1: Build ---
-FROM oven/bun:alpine AS build
+FROM node:18-alpine AS build
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+
+# Copier les fichiers de manifeste et installer les dépendances avec npm
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copier tout le reste du code source
 COPY . .
-ENV NODE_ENV=production
-RUN bun run build
+
+# Lancer le build de production
+RUN npm run build
 
 # --- STAGE 2: Production ---
-FROM oven/bun:alpine AS production
+FROM node:18-alpine AS production
 WORKDIR /app
+
 ENV NODE_ENV=production
 
-# Copier les artefacts de build de SvelteKit
+# Copier uniquement les fichiers nécessaires depuis l'étape de build
 COPY --from=build /app/build ./build
-# Copier les dépendances
 COPY --from=build /app/node_modules ./node_modules
-# Copier les fichiers nécessaires pour faire tourner notre serveur.ts
-COPY package.json .
-COPY tsconfig.json .
-COPY server.ts .
-COPY src ./src
-COPY data ./data
+COPY --from=build /app/package.json ./
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Utiliser tsx (via bunx) pour exécuter notre serveur TypeScript directement
-CMD ["bunx", "tsx", "server.ts"]
+# Lancer le serveur de production généré par SvelteKit
+CMD ["node", "build/index.js"]

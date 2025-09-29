@@ -20,7 +20,8 @@ COPY . .
 RUN bun run build
 
 # --- STAGE 3: Image de production ---
-FROM oven/bun:alpine AS production
+# Utilise une image Node.js Alpine pour la production
+FROM node:22-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -29,7 +30,6 @@ ENV NODE_ENV=production
 COPY --from=build /app/build .
 # On copie les dépendances de production.
 COPY --from=build /app/node_modules ./node_modules
-
 
 # On expose le port sur lequel l'application tournera.
 EXPOSE 3000

@@ -24,6 +24,9 @@ ENV NODE_ENV=production
 COPY --from=build /app/build ./build
 COPY --from=build /app/package.json ./
 
+# Installer les dépendances de production
+RUN npm install --production
+
 EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0

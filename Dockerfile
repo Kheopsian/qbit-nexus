@@ -1,17 +1,9 @@
 # --- STAGE 1: Build ---
 FROM node:20-alpine AS build
 WORKDIR /app
-
-# Copier les fichiers de manifeste
 COPY package.json ./
-
-# Installer les dépendances
 RUN npm install
-
-# Copier tout le reste du code source
 COPY . .
-
-# Lancer le build de production
 RUN npm run build
 
 # --- STAGE 2: Production ---
@@ -20,16 +12,16 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Copier uniquement les fichiers nécessaires depuis l'étape de build
+# Copier les fichiers nécessaires
 COPY --from=build /app/build ./build
+COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./
-
-# Installer les dépendances de production
-RUN npm install --production
+# On copie notre nouveau serveur !
+COPY --from=build /app/server.js ./server.js
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Lancer le serveur de production généré par SvelteKit
-CMD ["node", "build/index.js"]
+# On lance notre serveur au lieu de celui de SvelteKit
+CMD ["node", "server.js"]

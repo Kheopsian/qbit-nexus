@@ -7,36 +7,53 @@ import path from 'path';
 
 function decodeQbitStats(configString) {
 	const match = configString.match(/@Variant\((.*)\)/s);
-	if (!match || !match[1]) return null;
-	const binaryStr = match[1];
-	const bytes = new Uint8Array(binaryStr.length);
-	for (let i = 0; i < binaryStr.length; i++) {
-		bytes[i] = binaryStr.charCodeAt(i) & 0xff;
+	if (!match || !match[1]) {
+		console.error("Format de chaîne invalide. '@Variant(...)' non trouvé.");
+		return null;
 	}
-	const dataView = new DataView(bytes.buffer);
+
+	// --- LA CORRECTION EST ICI ---
+	// On utilise Buffer.from avec l'encodage 'binary' (alias pour latin1)
+	// C'est la méthode la plus fiable pour ce type de données.
+	const binaryData = Buffer.from(match[1], 'binary');
+	const dataView = new DataView(binaryData.buffer, binaryData.byteOffset, binaryData.byteLength);
+	// --- FIN DE LA CORRECTION ---
+
 	let offset = 0;
 	try {
-		if (dataView.getInt32(offset) !== 0x1c) throw new Error('Type non reconnu.');
+		const mapType = dataView.getInt32(offset);
+		if (mapType !== 0x1c) throw new Error(`Type non reconnu. Reçu: 0x${mapType.toString(16)}`);
 		offset += 4;
+
 		const pairCount = dataView.getInt32(offset);
-		if (pairCount !== 2) throw new Error('Nombre de paires inattendu.');
+		if (pairCount !== 2) throw new Error(`Nombre de paires inattendu: ${pairCount}.`);
 		offset += 4;
+
 		const stats = {};
 		const textDecoder = new TextDecoder('utf-16be');
+
 		for (let i = 0; i < pairCount; i++) {
 			const keyLength = dataView.getInt32(offset);
 			offset += 4;
-			const keyBytes = bytes.subarray(offset, offset + keyLength);
+			const keyBytes = new Uint8Array(binaryData.buffer, binaryData.byteOffset + offset, keyLength);
 			const key = textDecoder.decode(keyBytes);
 			offset += keyLength;
-			if (dataView.getInt32(offset) !== 4) throw new Error(`Type de valeur inattendu pour ${key}.`);
+
+			const valueType = dataView.getInt32(offset);
+			if (valueType !== 4) throw new Error(`Type de valeur inattendu pour la clé "${key}".`);
 			offset += 4;
-			stats[key] = dataView.getBigUint64(offset);
+
+			const value = dataView.getBigUint64(offset);
 			offset += 8;
+			stats[key] = value;
 		}
-		return { AlltimeUL: stats.AlltimeUL || 0n, AlltimeDL: stats.AlltimeDL || 0n };
+
+		return {
+			AlltimeUL: stats.AlltimeUL || 0n,
+			AlltimeDL: stats.AlltimeDL || 0n
+		};
 	} catch (error) {
-		console.error('Erreur de décodage:', error.message);
+		console.error('Erreur lors du décodage:', error.message);
 		return null;
 	}
 }

@@ -19,22 +19,20 @@ COPY . .
 # On lance le build SvelteKit.
 RUN bun run build
 
-# --- STAGE 3: Image de production ---
-# Utilise une image Node.js Alpine pour la production
-FROM node:22-alpine AS production
+# --- STAGE 3: Production ---
+FROM node:18-alpine AS production
 WORKDIR /app
-
 ENV NODE_ENV=production
 
-# On copie l'application buildée depuis l'étape précédente.
-COPY --from=build /app/build .
-# On copie les dépendances de production.
+COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 
-# On expose le port sur lequel l'application tournera.
+# On copie notre serveur personnalisé
+COPY server.js .
+
 EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# La commande pour démarrer le serveur de production.
-CMD ["node", "index.js"]
+# On démarre notre serveur personnalisé au lieu de celui par défaut
+CMD ["node", "server.js"]

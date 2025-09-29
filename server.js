@@ -5,29 +5,57 @@ import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 import path from 'path';
 
-function decodeQbitStats(configString) {
-	const prefix = '@Variant(';
-	const startIndex = configString.indexOf(prefix);
-	if (startIndex === -1) {
-		console.error("Format de chaîne invalide. '@Variant(...)' non trouvé.");
+async function readQbitStats(configPath) {
+	try {
+		const confFilePath = path.join(configPath, 'qBittorrent-data.conf');
+		await fs.access(confFilePath);
+
+		// 1. Lire le fichier entier directement dans un Buffer.
+		const fileBuffer = await fs.readFile(confFilePath);
+
+		// 2. Chercher la séquence de début (aussi en tant que Buffer).
+		const prefix = Buffer.from('AllStats=@Variant(');
+		const startIndex = fileBuffer.indexOf(prefix);
+		if (startIndex === -1) {
+			console.error("Séquence '@Variant(' non trouvée dans le buffer.");
+			return null;
+		}
+
+		// 3. Chercher la parenthèse de fin.
+		const endIndex = fileBuffer.indexOf(Buffer.from(')'), startIndex);
+		if (endIndex === -1) {
+			console.error("Parenthèse fermante ')' non trouvée dans le buffer.");
+			return null;
+		}
+
+		// 4. Extraire la tranche de données binaires PURES.
+		const binaryData = fileBuffer.slice(startIndex + prefix.length, endIndex);
+
+		// 5. Envoyer le Buffer pur au décodeur.
+		return decodeQbitStats(binaryData);
+	} catch (error) {
+		console.error(`Erreur de lecture des stats qBittorrent:`, error);
 		return null;
 	}
+}
 
-	// MODIFICATION 2 : Extraire la chaîne binaire et la convertir directement en Buffer
-	// On enlève le préfixe et le ')' final
-	const binaryStr = configString.substring(startIndex + prefix.length, configString.length - 1);
-	const binaryData = Buffer.from(binaryStr, 'binary');
-	const dataView = new DataView(binaryData.buffer, binaryData.byteOffset, binaryData.byteLength);
-
-	let offset = 0;
+// La fonction de décodage prend maintenant un Buffer en entrée.
+function decodeQbitStats(binaryData) {
 	try {
-		// Le reste de la fonction est bon et n'a pas besoin de changer
+		// Pas besoin de conversion, on a déjà un Buffer !
+		const dataView = new DataView(binaryData.buffer, binaryData.byteOffset, binaryData.byteLength);
+
+		let offset = 0;
 		const mapType = dataView.getInt32(offset);
-		if (mapType !== 0x1c) throw new Error(`Type non reconnu. Reçu: 0x${mapType.toString(16)}`);
+		if (mapType !== 0x1c) {
+			throw new Error(`Type non reconnu. Reçu: 0x${mapType.toString(16)}`);
+		}
 		offset += 4;
 
 		const pairCount = dataView.getInt32(offset);
-		if (pairCount !== 2) throw new Error(`Nombre de paires inattendu: ${pairCount}.`);
+		if (pairCount !== 2) {
+			throw new Error(`Nombre de paires inattendu: ${pairCount}.`);
+		}
 		offset += 4;
 
 		const stats = {};
@@ -41,7 +69,9 @@ function decodeQbitStats(configString) {
 			offset += keyLength;
 
 			const valueType = dataView.getInt32(offset);
-			if (valueType !== 4) throw new Error(`Type de valeur inattendu pour la clé "${key}".`);
+			if (valueType !== 4) {
+				throw new Error(`Type de valeur inattendu pour la clé "${key}".`);
+			}
 			offset += 4;
 
 			const value = dataView.getBigUint64(offset);
@@ -55,23 +85,6 @@ function decodeQbitStats(configString) {
 		};
 	} catch (error) {
 		console.error('Erreur lors du décodage:', error.message);
-		return null;
-	}
-}
-
-async function readQbitStats(configPath) {
-	try {
-		const confFilePath = path.join(configPath, 'qBittorrent-data.conf');
-		await fs.access(confFilePath);
-
-		// MODIFICATION 1 : Lire le fichier en 'binary' au lieu de 'utf-8'
-		const fileContent = await fs.readFile(confFilePath, 'binary');
-
-		const allStatsLine = fileContent.split('\n').find((line) => line.startsWith('AllStats='));
-		if (!allStatsLine) return null;
-		return decodeQbitStats(allStatsLine);
-	} catch (error) {
-		console.error(`Erreur de lecture des stats qBittorrent:`, error);
 		return null;
 	}
 }

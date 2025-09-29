@@ -1,65 +1,53 @@
-import { QbitWebSocketServer } from '$lib/websocket';
+// src/hooks.server.ts
+
 import type { Handle } from '@sveltejs/kit';
+import { dev } from '$app/environment'; // La méthode officielle pour vérifier le mode
+import { QbitWebSocketServer } from '$lib/websocket';
 import type { Server } from 'http';
 
-// En mode développement, le WebSocket est géré par Vite
-// En production, on utilise hooks.server.ts
 let wsServer: QbitWebSocketServer | null = null;
 let serverInitialized = false;
 
-export const handle: Handle = async ({ event, resolve }) => {
-	// @ts-expect-error - 'server' est injecté par adapter-node
-	const server = event.platform?.server as Server;
-	console.log('[DEBUG] Handle appelé - Server disponible:', !!server, 'Mode production:', !!server);
+// Ce log s'exécute une seule fois au démarrage du serveur
+console.log(
+	`[HOOKS_INIT] Démarrage du serveur. Mode dev: ${dev}. NODE_ENV: ${process.env.NODE_ENV}`
+);
 
-	// Seulement en mode production (quand server est disponible)
-	if (server && !serverInitialized) {
-		console.log('[DEBUG] Mode production détecté - Initialisation WebSocket server...');
+export const handle: Handle = async ({ event, resolve }) => {
+	// @ts-expect-error - 'server' est injecté par l'adapter-node
+	const server = event.platform?.server as Server;
+
+	// Ce log s'exécute à chaque requête
+	if (!serverInitialized) {
+		console.log(
+			`[HOOKS_HANDLE] Première requête. Mode dev: ${dev}. Objet 'server' disponible: ${!!server}`
+		);
+	}
+
+	// Logique d'initialisation du WebSocket
+	if (!dev && server && !serverInitialized) {
+		console.log('[HOOKS_PROD] Mode production détecté. Initialisation du serveur WebSocket...');
+		serverInitialized = true; // On le met ici pour éviter les initialisations multiples
+
 		wsServer = new QbitWebSocketServer({ path: '/qbit-ws' });
-		console.log('[DEBUG] QbitWebSocketServer créé, isReady:', wsServer.isReady);
 
 		server.on('upgrade', (req, socket, head) => {
-			console.log('[DEBUG] Upgrade request reçue:', req.url);
 			const pathname = req.url ? new URL(req.url, `http://${req.headers.host}`).pathname : '';
-			console.log('[DEBUG] Pathname extrait:', pathname);
-
-			// On vérifie si la demande concerne bien notre chemin WebSocket
 			if (pathname === '/qbit-ws' && wsServer) {
-				console.log('[DEBUG] Utilisation de wsServer.handleUpgrade');
-
-				try {
-					wsServer.handleUpgrade(req, socket, head, (ws) => {
-						console.log('[DEBUG] WebSocket upgrade réussi, émission de connection...');
-						wsServer!.emitConnection(ws, req);
-					});
-				} catch (error) {
-					console.error('[DEBUG] Erreur lors du handleUpgrade:', error);
-				}
-			} else {
-				console.log('[DEBUG] Chemin ignoré (pas /qbit-ws):', pathname);
+				wsServer.handleUpgrade(req, socket, head, (ws) => {
+					wsServer!.emitConnection(ws, req);
+				});
 			}
 		});
 
+		console.log('[HOOKS_PROD] Handler "upgrade" attaché au serveur de production.');
+	} else if (dev && !serverInitialized) {
+		console.log(
+			'[HOOKS_DEV] Mode développement détecté. Le WebSocket est géré par le plugin Vite.'
+		);
+		// On marque comme initialisé pour ne plus logger ce message
 		serverInitialized = true;
-		console.log('[DEBUG] Server WebSocket upgrade handler attaché');
-	} else if (!server) {
-		console.log('[DEBUG] Mode développement - WebSocket géré par Vite');
 	}
 
 	return resolve(event);
 };
-
-// Nettoyer le serveur WebSocket à l'arrêt
-process.on('SIGTERM', () => {
-	if (wsServer) {
-		wsServer.stop();
-		console.log('Serveur WebSocket arrêté');
-	}
-});
-
-process.on('SIGINT', () => {
-	if (wsServer) {
-		wsServer.stop();
-		console.log('Serveur WebSocket arrêté');
-	}
-});

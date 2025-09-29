@@ -48,8 +48,6 @@ export class QbitWebSocketServer {
 
 	constructor(options: QbitWebSocketServerOptions) {
 		console.log('[DEBUG] QbitWebSocketServer constructor appelé avec options:', options);
-		// Au lieu d'un serveur complet, nous créons un serveur SANS serveur physique.
-		// Il servira uniquement à gérer les clients.
 		if (options.path) {
 			console.log('[DEBUG] Création du WebSocketServer avec noServer: true');
 			this.wss = new WebSocketServer({ noServer: true, path: options.path });
@@ -58,8 +56,13 @@ export class QbitWebSocketServer {
 			throw new Error("WebSocketServer requires a 'path' option when running with 'noServer'.");
 		}
 
+		// On ne fait que la configuration synchrone ici
 		this.setupWebSocketServer();
-		this.loadInstances();
+	}
+
+	// Nouvelle méthode pour l'initialisation asynchrone
+	public async init(): Promise<void> {
+		await this.loadInstances();
 		this.startDataPolling();
 		this.startGlobalStatsPolling();
 	}

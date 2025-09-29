@@ -3,8 +3,6 @@ import { QbitWebSocketServer } from '$lib/websocket';
 import type { Handle } from '@sveltejs/kit';
 import type { Server } from 'http';
 
-// On utilise une variable "globale" pour stocker l'instance du serveur
-// et éviter de le recréer à chaque rechargement à chaud.
 let wsServerInitialized = false;
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -12,10 +10,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const server = event.platform?.server as Server;
 
 	if (server && !wsServerInitialized) {
-		console.log('[HOOKS] Serveur détecté. Initialisation du WebSocket...');
+		console.log('[HOOKS] Serveur de production détecté. Initialisation du WebSocket...');
 		wsServerInitialized = true;
 
+		// On crée l'instance (constructeur synchrone)
 		const wsServer = new QbitWebSocketServer({ path: '/qbit-ws' });
+		// On initialise les parties asynchrones
+		wsServer.init();
 
 		server.on('upgrade', (req, socket, head) => {
 			const pathname = req.url ? new URL(req.url, `http://${req.headers.host}`).pathname : '';

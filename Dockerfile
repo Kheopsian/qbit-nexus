@@ -24,4 +24,5 @@ ENV PORT=3000
 ENV HOST=0.0.0.0
 
 # On lance notre serveur au lieu de celui de SvelteKit
-CMD ["node", "server.js"]
+# Définir la limite de mémoire heap à 4GB
+CMD ["node", "--max-old-space-size=4096", "server.js"]

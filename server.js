@@ -4,6 +4,7 @@ import { handler } from './build/handler.js'; // Le handler SvelteKit
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 import path from 'path';
+import v8 from 'v8'; // Pour obtenir des informations détaillées sur la mémoire
 
 /**
  * Version valide : Parse la chaîne de caractères qBittorrent et la convertit en Buffer.
@@ -98,6 +99,23 @@ export class QbitWebSocketServer {
 
 	constructor(options) {
 		console.log('[DEBUG] QbitWebSocketServer constructor appelé avec options:', options);
+		// Log de diagnostic mémoire à l'initialisation
+		const memoryUsage = process.memoryUsage();
+		const heapStats = v8.getHeapStatistics();
+		console.log('[MEMORY DEBUG] Initialisation QbitWebSocketServer - Memory Usage:');
+		console.log('[MEMORY DEBUG] RSS:', Math.round(memoryUsage.rss / 1024 / 1024), 'MB');
+		console.log(
+			'[MEMORY DEBUG] Heap Total:',
+			Math.round(heapStats.total_heap_size / 1024 / 1024),
+			'MB'
+		);
+		console.log(
+			'[MEMORY DEBUG] Heap Used:',
+			Math.round(heapStats.used_heap_size / 1024 / 1024),
+			'MB'
+		);
+		console.log('[MEMORY DEBUG] External:', Math.round(memoryUsage.external / 1024 / 1024), 'MB');
+
 		if (options.path) {
 			console.log('[DEBUG] Création du WebSocketServer avec noServer: true');
 			this.wss = new WebSocketServer({ noServer: true, path: options.path });
@@ -180,8 +198,45 @@ export class QbitWebSocketServer {
 		this.wss.on('connection', (ws) => {
 			this.clients.add(ws);
 
+			// Log de diagnostic mémoire lors de la connexion WebSocket
+			const memoryUsage = process.memoryUsage();
+			const heapStats = v8.getHeapStatistics();
+			console.log('[MEMORY DEBUG] Nouvelle connexion WebSocket - Memory Usage:');
+			console.log('[MEMORY DEBUG] RSS:', Math.round(memoryUsage.rss / 1024 / 1024), 'MB');
+			console.log(
+				'[MEMORY DEBUG] Heap Total:',
+				Math.round(heapStats.total_heap_size / 1024 / 1024),
+				'MB'
+			);
+			console.log(
+				'[MEMORY DEBUG] Heap Used:',
+				Math.round(heapStats.used_heap_size / 1024 / 1024),
+				'MB'
+			);
+			console.log('[MEMORY DEBUG] External:', Math.round(memoryUsage.external / 1024 / 1024), 'MB');
+
 			ws.on('close', () => {
 				this.clients.delete(ws);
+				// Log de diagnostic mémoire lors de la fermeture WebSocket
+				const closeMemoryUsage = process.memoryUsage();
+				const closeHeapStats = v8.getHeapStatistics();
+				console.log('[MEMORY DEBUG] Fermeture connexion WebSocket - Memory Usage:');
+				console.log('[MEMORY DEBUG] RSS:', Math.round(closeMemoryUsage.rss / 1024 / 1024), 'MB');
+				console.log(
+					'[MEMORY DEBUG] Heap Total:',
+					Math.round(closeHeapStats.total_heap_size / 1024 / 1024),
+					'MB'
+				);
+				console.log(
+					'[MEMORY DEBUG] Heap Used:',
+					Math.round(closeHeapStats.used_heap_size / 1024 / 1024),
+					'MB'
+				);
+				console.log(
+					'[MEMORY DEBUG] External:',
+					Math.round(closeMemoryUsage.external / 1024 / 1024),
+					'MB'
+				);
 			});
 
 			ws.on('error', (error) => {
@@ -386,6 +441,27 @@ export class QbitWebSocketServer {
 	}
 
 	async pollAllInstances() {
+		// Log de diagnostic mémoire avant le traitement des instances
+		const startMemoryUsage = process.memoryUsage();
+		const startHeapStats = v8.getHeapStatistics();
+		console.log('[MEMORY DEBUG] Début pollAllInstances - Memory Usage:');
+		console.log('[MEMORY DEBUG] RSS:', Math.round(startMemoryUsage.rss / 1024 / 1024), 'MB');
+		console.log(
+			'[MEMORY DEBUG] Heap Total:',
+			Math.round(startHeapStats.total_heap_size / 1024 / 1024),
+			'MB'
+		);
+		console.log(
+			'[MEMORY DEBUG] Heap Used:',
+			Math.round(startHeapStats.used_heap_size / 1024 / 1024),
+			'MB'
+		);
+		console.log(
+			'[MEMORY DEBUG] External:',
+			Math.round(startMemoryUsage.external / 1024 / 1024),
+			'MB'
+		);
+
 		const promises = this.instances.map((instance) =>
 			this.fetchInstanceData(instance).then((data) => ({ instanceId: instance.id, data }))
 		);
@@ -409,6 +485,37 @@ export class QbitWebSocketServer {
 				client.send(message);
 			}
 		});
+
+		// Log de diagnostic mémoire après le traitement des instances
+		const endMemoryUsage = process.memoryUsage();
+		const endHeapStats = v8.getHeapStatistics();
+		console.log('[MEMORY DEBUG] Fin pollAllInstances - Memory Usage:');
+		console.log('[MEMORY DEBUG] RSS:', Math.round(endMemoryUsage.rss / 1024 / 1024), 'MB');
+		console.log(
+			'[MEMORY DEBUG] Heap Total:',
+			Math.round(endHeapStats.total_heap_size / 1024 / 1024),
+			'MB'
+		);
+		console.log(
+			'[MEMORY DEBUG] Heap Used:',
+			Math.round(endHeapStats.used_heap_size / 1024 / 1024),
+			'MB'
+		);
+		console.log(
+			'[MEMORY DEBUG] External:',
+			Math.round(endMemoryUsage.external / 1024 / 1024),
+			'MB'
+		);
+
+		// Calcul de la différence de mémoire
+		const rssDiff = endMemoryUsage.rss - startMemoryUsage.rss;
+		const heapUsedDiff = endHeapStats.used_heap_size - startHeapStats.used_heap_size;
+		console.log('[MEMORY DEBUG] Différence RSS:', Math.round(rssDiff / 1024 / 1024), 'MB');
+		console.log(
+			'[MEMORY DEBUG] Différence Heap Used:',
+			Math.round(heapUsedDiff / 1024 / 1024),
+			'MB'
+		);
 	}
 
 	/**
@@ -544,6 +651,23 @@ export class QbitWebSocketServer {
 
 		// Puis toutes les 2 secondes
 		this.intervalId = setInterval(() => {
+			// Log de diagnostic mémoire à chaque polling
+			const memoryUsage = process.memoryUsage();
+			const heapStats = v8.getHeapStatistics();
+			console.log('[MEMORY DEBUG] Polling Data - Memory Usage:');
+			console.log('[MEMORY DEBUG] RSS:', Math.round(memoryUsage.rss / 1024 / 1024), 'MB');
+			console.log(
+				'[MEMORY DEBUG] Heap Total:',
+				Math.round(heapStats.total_heap_size / 1024 / 1024),
+				'MB'
+			);
+			console.log(
+				'[MEMORY DEBUG] Heap Used:',
+				Math.round(heapStats.used_heap_size / 1024 / 1024),
+				'MB'
+			);
+			console.log('[MEMORY DEBUG] External:', Math.round(memoryUsage.external / 1024 / 1024), 'MB');
+
 			this.pollAllInstances();
 		}, 2000);
 	}

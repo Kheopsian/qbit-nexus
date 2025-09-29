@@ -1,38 +1,31 @@
-# --- STAGE 1: Installation des dépendances ---
-FROM oven/bun:alpine AS install
+# --- STAGE 1: Build ---
+FROM oven/bun:alpine AS build
 WORKDIR /app
-
-# On copie uniquement les fichiers nécessaires à l'installation.
 COPY package.json bun.lock ./
-
-# On installe les dépendances.
-RUN bun install --frozen-lockfile --verbose
-
-# --- STAGE 2: Build de l'application ---
-FROM install AS build
-WORKDIR /app
-
-# On copie les dépendances déjà installées et le reste du code source.
-COPY --from=install /app/node_modules ./node_modules
+RUN bun install --frozen-lockfile
 COPY . .
-
-# On lance le build SvelteKit.
+ENV NODE_ENV=production
 RUN bun run build
 
-# --- STAGE 3: Production ---
-FROM node:18-alpine AS production
+# --- STAGE 2: Production ---
+FROM oven/bun:alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Copier les artefacts de build de SvelteKit
 COPY --from=build /app/build ./build
+# Copier les dépendances
 COPY --from=build /app/node_modules ./node_modules
-COPY server.js .
-COPY package.json . 
-# On copie notre nouveau fichier serveur WebSocket
-COPY websocket-server.js .
+# Copier les fichiers nécessaires pour faire tourner notre serveur.ts
+COPY package.json .
+COPY tsconfig.json .
+COPY server.ts .
+COPY src ./src
+COPY data ./data
 
 EXPOSE 3000
+ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# On démarre notre serveur personnalisé
-CMD ["node", "server.js"]
+# Utiliser tsx (via bunx) pour exécuter notre serveur TypeScript directement
+CMD ["bunx", "tsx", "server.ts"]

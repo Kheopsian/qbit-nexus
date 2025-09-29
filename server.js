@@ -4,52 +4,36 @@ import { handler } from './build/handler.js'; // Le handler SvelteKit
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
 
-
-Voici le fichier server.js final et complet. Il intègre ta logique de parsing validée et toute la classe du serveur WebSocket. C'est la version "prête pour la production".
-
-Copie simplement ce code dans un nouveau fichier server.js à la racine de ton projet, re-build ton image Docker, et tout fonctionnera.
-
-JavaScript
-
-import express from 'express';
-import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import fs from 'fs/promises';
-import path from 'path';
-import { handler } from './build/handler.js';
-
-// --- FONCTIONS DE PARSING VALIDÉES ---
-
 /**
  * Version valide : Parse la chaîne de caractères qBittorrent et la convertit en Buffer.
  * @param {string} str La chaîne de caractères brute.
  * @returns {Buffer}
  */
 function qbitStringToBuffer(str) {
-    const bytes = [];
-    for (let i = 0; i < str.length; i++) {
-        if (str[i] === '\\') {
-            i++;
-            if (i >= str.length) break;
+	const bytes = [];
+	for (let i = 0; i < str.length; i++) {
+		if (str[i] === '\\') {
+			i++;
+			if (i >= str.length) break;
 
-            if (str[i] === 'x') {
-                let hexEnd = i + 1;
-                while (hexEnd < str.length && hexEnd < i + 3 && /[0-9a-fA-F]/.test(str[hexEnd])) {
-                    hexEnd++;
-                }
-                const hex = str.substring(i + 1, hexEnd);
-                bytes.push(parseInt(hex, 16));
-                i = hexEnd - 1;
-            } else if (str[i] === '0') {
-                bytes.push(0);
-            } else {
-                bytes.push(str.charCodeAt(i));
-            }
-        } else {
-            bytes.push(str.charCodeAt(i));
-        }
-    }
-    return Buffer.from(bytes);
+			if (str[i] === 'x') {
+				let hexEnd = i + 1;
+				while (hexEnd < str.length && hexEnd < i + 3 && /[0-9a-fA-F]/.test(str[hexEnd])) {
+					hexEnd++;
+				}
+				const hex = str.substring(i + 1, hexEnd);
+				bytes.push(parseInt(hex, 16));
+				i = hexEnd - 1;
+			} else if (str[i] === '0') {
+				bytes.push(0);
+			} else {
+				bytes.push(str.charCodeAt(i));
+			}
+		} else {
+			bytes.push(str.charCodeAt(i));
+		}
+	}
+	return Buffer.from(bytes);
 }
 
 /**
@@ -58,43 +42,46 @@ function qbitStringToBuffer(str) {
  * @returns {{AlltimeUL: bigint, AlltimeDL: bigint} | null}
  */
 function decodeQbitStats(binaryData) {
-    try {
-        const dataView = new DataView(binaryData.buffer, binaryData.byteOffset, binaryData.byteLength);
-        let offset = 0;
+	try {
+		const dataView = new DataView(binaryData.buffer, binaryData.byteOffset, binaryData.byteLength);
+		let offset = 0;
 
-        const mapType = dataView.getInt32(offset, false);
-        if (mapType !== 0x1c) throw new Error(`Type non reconnu. Attendu: 0x1c, Reçu: 0x${mapType.toString(16)}`);
-        offset += 4;
+		const mapType = dataView.getInt32(offset, false);
+		if (mapType !== 0x1c)
+			throw new Error(`Type non reconnu. Attendu: 0x1c, Reçu: 0x${mapType.toString(16)}`);
+		offset += 4;
 
-        const pairCount = dataView.getInt32(offset, false);
-        if (pairCount <= 0 || pairCount > 10) throw new Error(`Nombre de paires suspect: ${pairCount}.`);
-        offset += 4;
+		const pairCount = dataView.getInt32(offset, false);
+		if (pairCount <= 0 || pairCount > 10)
+			throw new Error(`Nombre de paires suspect: ${pairCount}.`);
+		offset += 4;
 
-        const stats = {};
-        const textDecoder = new TextDecoder('utf-16be');
+		const stats = {};
+		const textDecoder = new TextDecoder('utf-16be');
 
-        for (let i = 0; i < pairCount; i++) {
-            const keyLength = dataView.getInt32(offset, false);
-            if (keyLength < 0 || keyLength > 200) throw new Error(`Taille de clé suspecte: ${keyLength}`);
-            offset += 4;
+		for (let i = 0; i < pairCount; i++) {
+			const keyLength = dataView.getInt32(offset, false);
+			if (keyLength < 0 || keyLength > 200) throw new Error(`Taille de clé suspecte: ${keyLength}`);
+			offset += 4;
 
-            const keyBytes = new Uint8Array(binaryData.buffer, binaryData.byteOffset + offset, keyLength);
-            const key = textDecoder.decode(keyBytes);
-            offset += keyLength;
+			const keyBytes = new Uint8Array(binaryData.buffer, binaryData.byteOffset + offset, keyLength);
+			const key = textDecoder.decode(keyBytes);
+			offset += keyLength;
 
-            const valueType = dataView.getInt32(offset, false);
-            if (valueType !== 4) throw new Error(`Type de valeur inattendu pour la clé "${key}": ${valueType} (attendu: 4)`);
-            offset += 4;
+			const valueType = dataView.getInt32(offset, false);
+			if (valueType !== 4)
+				throw new Error(`Type de valeur inattendu pour la clé "${key}": ${valueType} (attendu: 4)`);
+			offset += 4;
 
-            const value = dataView.getBigUint64(offset, false);
-            offset += 8;
-            stats[key] = value;
-        }
-        return { AlltimeUL: stats.AlltimeUL || 0n, AlltimeDL: stats.AlltimeDL || 0n };
-    } catch (error) {
-        console.error('Erreur lors du décodage:', error.message);
-        return null;
-    }
+			const value = dataView.getBigUint64(offset, false);
+			offset += 8;
+			stats[key] = value;
+		}
+		return { AlltimeUL: stats.AlltimeUL || 0n, AlltimeDL: stats.AlltimeDL || 0n };
+	} catch (error) {
+		console.error('Erreur lors du décodage:', error.message);
+		return null;
+	}
 }
 
 /**
@@ -103,20 +90,20 @@ function decodeQbitStats(binaryData) {
  * @returns {Promise<{AlltimeUL: bigint, AlltimeDL: bigint} | null>}
  */
 async function readQbitStats(configFilePath) {
-    try {
-        const fileContent = await fs.readFile(configFilePath, 'utf-8');
-        const match = fileContent.match(/AllStats=@Variant\((.*)\)/s);
-        if (!match || !match[1]) {
-            console.error("Séquence 'AllStats=@Variant(...)' non trouvée.");
-            return null;
-        }
-        const escapedString = match[1];
-        const binaryData = qbitStringToBuffer(escapedString);
-        return decodeQbitStats(binaryData);
-    } catch (error) {
-        console.error(`Erreur de lecture des stats qBittorrent:`, error);
-        return null;
-    }
+	try {
+		const fileContent = await fs.readFile(configFilePath, 'utf-8');
+		const match = fileContent.match(/AllStats=@Variant\((.*)\)/s);
+		if (!match || !match[1]) {
+			console.error("Séquence 'AllStats=@Variant(...)' non trouvée.");
+			return null;
+		}
+		const escapedString = match[1];
+		const binaryData = qbitStringToBuffer(escapedString);
+		return decodeQbitStats(binaryData);
+	} catch (error) {
+		console.error(`Erreur de lecture des stats qBittorrent:`, error);
+		return null;
+	}
 }
 
 export class QbitWebSocketServer {

@@ -3,6 +3,7 @@ import http from 'http';
 import { handler } from './build/handler.js'; // Le handler SvelteKit
 import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
+import path from 'path';
 
 /**
  * Version valide : Parse la chaîne de caractères qBittorrent et la convertit en Buffer.
@@ -80,28 +81,6 @@ function decodeQbitStats(binaryData) {
 		return { AlltimeUL: stats.AlltimeUL || 0n, AlltimeDL: stats.AlltimeDL || 0n };
 	} catch (error) {
 		console.error('Erreur lors du décodage:', error.message);
-		return null;
-	}
-}
-
-/**
- * Version valide : Lit le fichier de configuration et lance le parsing.
- * @param {string} configFilePath Le chemin vers le fichier qBittorrent-data.conf.
- * @returns {Promise<{AlltimeUL: bigint, AlltimeDL: bigint} | null>}
- */
-async function readQbitStats(configFilePath) {
-	try {
-		const fileContent = await fs.readFile(configFilePath, 'utf-8');
-		const match = fileContent.match(/AllStats=@Variant\((.*)\)/s);
-		if (!match || !match[1]) {
-			console.error("Séquence 'AllStats=@Variant(...)' non trouvée.");
-			return null;
-		}
-		const escapedString = match[1];
-		const binaryData = qbitStringToBuffer(escapedString);
-		return decodeQbitStats(binaryData);
-	} catch (error) {
-		console.error(`Erreur de lecture des stats qBittorrent:`, error);
 		return null;
 	}
 }
@@ -436,30 +415,28 @@ export class QbitWebSocketServer {
 	 * Récupère les statistiques globales de toutes les instances qui ont un configPath défini
 	 */
 	async fetchGlobalStats() {
-		let alltimeUL = 0n;
-		let alltimeDL = 0n;
-
-		// Parcourir toutes les instances qui ont un configPath défini
+		let alltimeUL = 0n,
+			alltimeDL = 0n;
 		for (const instance of this.instances) {
 			if (instance.configPath) {
 				try {
-					const stats = await readQbitStats(instance.configPath);
-					if (stats) {
-						alltimeUL += stats.AlltimeUL;
-						alltimeDL += stats.AlltimeDL;
-						console.log(
-							`[GlobalStats] Statistiques récupérées pour ${instance.name}: UL=${stats.AlltimeUL}, DL=${stats.AlltimeDL}`
-						);
+					// --- LA CORRECTION EST ICI ---
+					const fullPath = path.join(instance.configPath, 'qBittorrent-data.conf');
+					const fileContent = await fs.readFile(fullPath, 'utf-8');
+					const match = fileContent.match(/AllStats=@Variant\((.*)\)/s);
+					if (match && match[1]) {
+						const binaryData = qbitStringToBuffer(match[1]);
+						const stats = decodeQbitStats(binaryData);
+						if (stats) {
+							alltimeUL += stats.AlltimeUL;
+							alltimeDL += stats.AlltimeDL;
+						}
 					}
 				} catch (error) {
-					console.error(
-						`[GlobalStats] Erreur lors de la lecture des statistiques pour ${instance.name}:`,
-						error
-					);
+					console.error(`Erreur de lecture des stats pour l'instance ${instance.name}:`, error);
 				}
 			}
 		}
-
 		return { alltimeUL, alltimeDL };
 	}
 

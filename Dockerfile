@@ -19,19 +19,19 @@ COPY . .
 # On lance le build SvelteKit.
 RUN bun run build
 
+# --- STAGE 3: Production ---
 FROM node:18-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
-
-# On copie notre serveur personnalisé ET le package.json
 COPY server.js .
-COPY package.json .
+COPY package.json . 
+# On copie notre nouveau fichier serveur WebSocket
+COPY websocket-server.js .
 
 EXPOSE 3000
-ENV PORT=3000
 ENV HOST=0.0.0.0
 
 # On démarre notre serveur personnalisé

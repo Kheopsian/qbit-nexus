@@ -6,21 +6,22 @@ import fs from 'fs/promises';
 import path from 'path';
 
 function decodeQbitStats(configString) {
-	const match = configString.match(/@Variant\((.*)\)/s);
-	if (!match || !match[1]) {
+	const prefix = '@Variant(';
+	const startIndex = configString.indexOf(prefix);
+	if (startIndex === -1) {
 		console.error("Format de chaîne invalide. '@Variant(...)' non trouvé.");
 		return null;
 	}
 
-	// --- LA CORRECTION EST ICI ---
-	// On utilise Buffer.from avec l'encodage 'binary' (alias pour latin1)
-	// C'est la méthode la plus fiable pour ce type de données.
-	const binaryData = Buffer.from(match[1], 'binary');
+	// MODIFICATION 2 : Extraire la chaîne binaire et la convertir directement en Buffer
+	// On enlève le préfixe et le ')' final
+	const binaryStr = configString.substring(startIndex + prefix.length, configString.length - 1);
+	const binaryData = Buffer.from(binaryStr, 'binary');
 	const dataView = new DataView(binaryData.buffer, binaryData.byteOffset, binaryData.byteLength);
-	// --- FIN DE LA CORRECTION ---
 
 	let offset = 0;
 	try {
+		// Le reste de la fonction est bon et n'a pas besoin de changer
 		const mapType = dataView.getInt32(offset);
 		if (mapType !== 0x1c) throw new Error(`Type non reconnu. Reçu: 0x${mapType.toString(16)}`);
 		offset += 4;
@@ -62,7 +63,10 @@ async function readQbitStats(configPath) {
 	try {
 		const confFilePath = path.join(configPath, 'qBittorrent-data.conf');
 		await fs.access(confFilePath);
-		const fileContent = await fs.readFile(confFilePath, 'utf-8');
+
+		// MODIFICATION 1 : Lire le fichier en 'binary' au lieu de 'utf-8'
+		const fileContent = await fs.readFile(confFilePath, 'binary');
+
 		const allStatsLine = fileContent.split('\n').find((line) => line.startsWith('AllStats='));
 		if (!allStatsLine) return null;
 		return decodeQbitStats(allStatsLine);

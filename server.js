@@ -289,48 +289,74 @@ export class QbitWebSocketServer {
 	}
 
 	mergeData(currentData, newData) {
-		// Fusionner les torrents
+		// Si c'est une mise à jour complète (première requête), on remplace tout
+		if (newData.full_update) {
+			currentData.torrents = newData.torrents || {};
+			currentData.categories = newData.categories || {};
+			currentData.tags = newData.tags || [];
+			currentData.server_state = newData.server_state || {};
+			return;
+		}
+
+		// Gérer les torrents mis à jour ou ajoutés de manière optimisée
 		if (newData.torrents) {
 			if (!currentData.torrents) {
 				currentData.torrents = {};
 			}
-			Object.entries(newData.torrents).forEach(([hash, torrentData]) => {
-				if (torrentData === null) {
-					delete currentData.torrents[hash];
+			for (const [hash, torrentData] of Object.entries(newData.torrents)) {
+				// Si le torrent n'existe pas, on l'ajoute. Sinon, on met à jour l'objet existant.
+				if (!currentData.torrents[hash]) {
+					currentData.torrents[hash] = torrentData;
 				} else {
-					currentData.torrents[hash] = {
-						...(currentData.torrents[hash] || {}),
-						...torrentData
-					};
+					Object.assign(currentData.torrents[hash], torrentData);
 				}
-			});
+			}
 		}
 
-		// Remplacer server_state
-		if (newData.server_state !== undefined) {
+		// Gérer les torrents supprimés
+		if (newData.torrents_removed && currentData.torrents) {
+			for (const hash of newData.torrents_removed) {
+				delete currentData.torrents[hash];
+			}
+		}
+
+		// Remplacer l'état du serveur
+		if (newData.server_state) {
 			currentData.server_state = newData.server_state;
 		}
 
-		// Fusionner les catégories
+		// Gérer les catégories (ajout/mise à jour)
 		if (newData.categories) {
 			if (!currentData.categories) {
 				currentData.categories = {};
 			}
-			Object.entries(newData.categories).forEach(([name, categoryData]) => {
-				if (categoryData === null) {
-					delete currentData.categories[name];
-				} else {
-					currentData.categories[name] = {
-						...(currentData.categories[name] || {}),
-						...categoryData
-					};
-				}
-			});
+			Object.assign(currentData.categories, newData.categories);
 		}
 
-		// Remplacer les tags
-		if (newData.tags !== undefined) {
-			currentData.tags = newData.tags;
+		// Gérer les catégories supprimées
+		if (newData.categories_removed && currentData.categories) {
+			for (const categoryName of newData.categories_removed) {
+				delete currentData.categories[categoryName];
+			}
+		}
+
+		// Gérer les tags (ajout/mise à jour)
+		if (newData.tags) {
+			if (!currentData.tags) {
+				currentData.tags = [];
+			}
+			const existingTags = new Set(currentData.tags);
+			for (const newTag of newData.tags) {
+				if (!existingTags.has(newTag)) {
+					currentData.tags.push(newTag);
+				}
+			}
+		}
+
+		// Gérer les tags supprimés
+		if (newData.tags_removed && currentData.tags) {
+			const removedTags = new Set(newData.tags_removed);
+			currentData.tags = currentData.tags.filter((tag) => !removedTags.has(tag));
 		}
 	}
 

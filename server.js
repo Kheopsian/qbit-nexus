@@ -1,8 +1,58 @@
 import express from 'express';
 import http from 'http';
 import { handler } from './build/handler.js'; // Le handler SvelteKit
-import { WebSocketServer } from 'ws'; // Le VRAI 'ws'
+import { WebSocketServer, WebSocket } from 'ws';
 import fs from 'fs/promises';
+
+function decodeQbitStats(configString) {
+	const match = configString.match(/@Variant\((.*)\)/s);
+	if (!match || !match[1]) return null;
+	const binaryStr = match[1];
+	const bytes = new Uint8Array(binaryStr.length);
+	for (let i = 0; i < binaryStr.length; i++) {
+		bytes[i] = binaryStr.charCodeAt(i) & 0xff;
+	}
+	const dataView = new DataView(bytes.buffer);
+	let offset = 0;
+	try {
+		if (dataView.getInt32(offset) !== 0x1c) throw new Error('Type non reconnu.');
+		offset += 4;
+		const pairCount = dataView.getInt32(offset);
+		if (pairCount !== 2) throw new Error('Nombre de paires inattendu.');
+		offset += 4;
+		const stats = {};
+		const textDecoder = new TextDecoder('utf-16be');
+		for (let i = 0; i < pairCount; i++) {
+			const keyLength = dataView.getInt32(offset);
+			offset += 4;
+			const keyBytes = bytes.subarray(offset, offset + keyLength);
+			const key = textDecoder.decode(keyBytes);
+			offset += keyLength;
+			if (dataView.getInt32(offset) !== 4) throw new Error(`Type de valeur inattendu pour ${key}.`);
+			offset += 4;
+			stats[key] = dataView.getBigUint64(offset);
+			offset += 8;
+		}
+		return { AlltimeUL: stats.AlltimeUL || 0n, AlltimeDL: stats.AlltimeDL || 0n };
+	} catch (error) {
+		console.error('Erreur de décodage:', error.message);
+		return null;
+	}
+}
+
+async function readQbitStats(configPath) {
+	try {
+		const confFilePath = path.join(configPath, 'qBittorrent-data.conf');
+		await fs.access(confFilePath);
+		const fileContent = await fs.readFile(confFilePath, 'utf-8');
+		const allStatsLine = fileContent.split('\n').find((line) => line.startsWith('AllStats='));
+		if (!allStatsLine) return null;
+		return decodeQbitStats(allStatsLine);
+	} catch (error) {
+		console.error(`Erreur de lecture des stats qBittorrent:`, error);
+		return null;
+	}
+}
 
 export class QbitWebSocketServer {
 	wss = null;

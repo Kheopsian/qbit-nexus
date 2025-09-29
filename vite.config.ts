@@ -2,7 +2,7 @@
 
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type UserConfig, type ViteDevServer } from 'vite';
-import { QbitWebSocketServer } from './src/lib/websocket.js';
+import { QbitWebSocketServer } from './src/lib/websocket';
 
 // On définit le plugin pour le serveur de développement WebSocket
 const webSocketDevPlugin = {

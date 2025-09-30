@@ -273,7 +273,21 @@
 			unitIndex++;
 		}
 
-		return `${value.toFixed(1)} ${units[unitIndex]}`;
+		// Calculer le nombre de décimales nécessaires pour avoir 4 chiffres significatifs
+		const totalDigits = 4;
+		let decimalPlaces = 0;
+
+		if (value > 100) {
+			decimalPlaces = 1; // 1 décimale pour les nombres > 100
+		} else if (value > 10) {
+			decimalPlaces = 2; // 2 décimales pour les nombres > 10
+		} else if (value > 1) {
+			decimalPlaces = 3; // 3 décimales pour les nombres > 1
+		} else {
+			decimalPlaces = 3; // 3 décimales pour les nombres <= 1
+		}
+
+		return `${value.toFixed(decimalPlaces)} ${units[unitIndex]}`;
 	}
 
 	// --- TRI DES COLONNES ---

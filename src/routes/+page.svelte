@@ -264,7 +264,7 @@
 	// Fonction pour formater les tailles
 	function formatSize(bytes: number): string {
 		if (bytes === 0) return '0 B';
-		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
 		let value = bytes;
 		let unitIndex = 0;
 
@@ -399,8 +399,17 @@
 					totalDlSpeed += serverState?.dl_info_speed || 0;
 					totalUlSpeed += serverState?.up_info_speed || 0;
 
-					// Ajouter le nombre de torrents actifs
-					totalActiveTorrents += serverState?.active_torrents || 0;
+					// Compter les torrents actifs en additionnant ceux en téléchargement et en envoi
+					Object.values(torrents).forEach((torrent: any) => {
+						const mappedStatus = mapTorrentStatus(torrent);
+						if (
+							mappedStatus.primary === 'Downloading' ||
+							mappedStatus.primary === 'Uploading' ||
+							mappedStatus.primary === 'Seeding'
+						) {
+							totalActiveTorrents++;
+						}
+					});
 
 					// Compter le nombre total de torrents
 					totalTorrents += Object.keys(torrents).length;
@@ -753,11 +762,11 @@
 		</div>
 		<div class="current-stats">
 			<div class="stat-item">
-				<span class="stat-label">Session DL</span>
+				<span class="stat-label">Current DL</span>
 				<span class="stat-value">{sessionStats.downloadSpeed}</span>
 			</div>
 			<div class="stat-item">
-				<span class="stat-label">Session UL</span>
+				<span class="stat-label">Current UL</span>
 				<span class="stat-value">{sessionStats.uploadSpeed}</span>
 			</div>
 			<div class="stat-item">

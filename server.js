@@ -522,10 +522,21 @@ export class QbitWebSocketServer {
 
 		// Envoyer les données à tous les clients connectés
 		const message = JSON.stringify(aggregatedData);
+		const messageSize = Buffer.byteLength(message);
+
+		const BUFFER_THRESHOLD = messageSize * 1.5;
 
 		this.clients.forEach((client) => {
 			if (client.readyState === WebSocket.OPEN) {
-				client.send(message);
+				// Si le buffer contient déjà plus d'un message, on ignore cet envoi.
+				if (client.bufferedAmount < BUFFER_THRESHOLD) {
+					client.send(message);
+				} else {
+					// Ce log est optionnel, mais utile pour voir si des clients sont souvent à la traîne.
+					console.warn(
+						`[WebSocket] Client lent détecté (buffer: ${getObjectSize(client.bufferedAmount)}), envoi ignoré pour maintenir le temps réel.`
+					);
+				}
 			}
 		});
 

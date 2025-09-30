@@ -288,6 +288,19 @@ export class QbitWebSocketServer {
 		return cookies;
 	}
 
+	getObjectSize(obj) {
+		const size = Buffer.from(JSON.stringify(obj)).length;
+		const kb = size / 1024;
+		const mb = kb / 1024;
+		if (mb > 1) {
+			return `${mb.toFixed(2)} MB`;
+		}
+		if (kb > 1) {
+			return `${kb.toFixed(2)} KB`;
+		}
+		return `${size} bytes`;
+	}
+
 	mergeData(currentData, newData) {
 		// Si c'est une mise à jour complète (première requête), on remplace tout
 		if (newData.full_update) {
@@ -486,6 +499,10 @@ export class QbitWebSocketServer {
 			'[MEMORY DEBUG] External:',
 			Math.round(startMemoryUsage.external / 1024 / 1024),
 			'MB'
+		);
+
+		console.log(
+			`[MEMORY DEBUG] Taille de instanceFullData: ${getObjectSize(this.instanceFullData)}`
 		);
 
 		const promises = this.instances.map((instance) =>

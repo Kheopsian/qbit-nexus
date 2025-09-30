@@ -534,7 +534,7 @@ export class QbitWebSocketServer {
 				} else {
 					// Ce log est optionnel, mais utile pour voir si des clients sont souvent à la traîne.
 					console.warn(
-						`[WebSocket] Client lent détecté (buffer: ${getObjectSize(client.bufferedAmount)}), envoi ignoré pour maintenir le temps réel.`
+						`[WebSocket] Client lent détecté (buffer: ${this.getObjectSize(client.bufferedAmount)}), envoi ignoré pour maintenir le temps réel.`
 					);
 				}
 			}

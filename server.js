@@ -502,7 +502,7 @@ export class QbitWebSocketServer {
 		);
 
 		console.log(
-			`[MEMORY DEBUG] Taille de instanceFullData: ${getObjectSize(this.instanceFullData)}`
+			`[MEMORY DEBUG] Taille de instanceFullData: ${this.getObjectSize(this.instanceFullData)}`
 		);
 
 		const promises = this.instances.map((instance) =>

@@ -80,7 +80,7 @@ class WebSocketClient {
 						// C'est les données des instances
 						qbitData.set(data);
 					} else if (data.globalStats !== undefined) {
-						console.log('[DEBUG Client] Statistiques globales reçues');
+						console.log('[DEBUG Client] Statistiques globales reçues', data.globalStats);
 						// C'est les statistiques globales
 						globalStatsData.set(data);
 					}

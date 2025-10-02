@@ -264,7 +264,7 @@
 	// Fonction pour formater les tailles
 	function formatSize(bytes: number): string {
 		if (bytes === 0) return '0 B';
-		const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB'];
+		const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB'];
 		let value = bytes;
 		let unitIndex = 0;
 
